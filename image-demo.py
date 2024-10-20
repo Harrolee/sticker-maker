@@ -2,9 +2,7 @@ from io import BytesIO
 from fasthtml.common import *
 from pathlib import Path
 from PIL import Image, ImageOps
-
-pages = {"main_page": "main_page"}
-
+from ui_components import accordion
 app,rt = fast_app()
 # gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
 # app = FastHTML(hdrs=(picolink, gridlink))
@@ -26,16 +24,16 @@ def get():
     # add = Form(Group(upl, inp, Button("Sticker!")), hx_post="/upload-img", target_id='displayed-image', hx_swap="outerHTML")
     # sticker_containers = [sticker_preview(g) for g in gens(limit=10)] # Start with last 10
     # gen_list = Div(*sticker_containers[::-1], id='gen-list', cls="row") # flexbox container: class = row
-    return Title('Image Upload Demo'), Main(H1('Image Upload'), image_upload(), cls='container')
+    return Title('Image Upload Demo'), Main(image_upload(), cls='container', id='root')
 
 def image_upload(): 
     return Article(
-        H2('Step 1: Upload an Image'),
-        Form(hx_encoding='multipart/form-data', hx_post="/upload-image", hx_target="#displayed-image")(
+        H2('Step 1: Upload an image'),
+        Form(hx_encoding='multipart/form-data', hx_post="/upload-image", hx_target=f"#main_content")(
             Input(type='file', id='imageup', accept='image/*'),
             Button("Upload", type="submit", cls='secondary'),
         ),
-        Figure(id='displayed-image')
+        id="main_content"
     )
 
 @rt('/upload-image')
@@ -46,13 +44,17 @@ async def post(imageup: UploadFile):
     img = ImageOps.exif_transpose(img) # Fix image rotation based on exif metadata
     fname = f"workspace/input/temp.png"
     img.save(fname)
-    return (Figure(
-                Img(src=fname, alt="preview image"), id="displayed-image"), 
-                Form(hx_post="stickerize", hx_target="#displayed-image")(
-                    Input(type='text', id='sticker_name', accept='text/*'),
-                    Button("Stickerize Image", type="submit"), 
-                )
-            )
+    return Article(
+            H2('Step 2: Name your sticker'),
+            Form(hx_post="stickerize", hx_target="#main_content")(
+                Input(type='text', id='sticker_name', accept='text/*'),
+                Button("Stickerize Image", type="submit"), 
+            ),
+            Figure(
+                Img(src=fname, alt="preview image"), 
+                id="displayed-image"), 
+            id="main_content"
+        )
 
 # add the ability to stickerize it
 
@@ -62,9 +64,33 @@ async def post(sticker_name: str):
     img = Image.open(fname)
     # call stickerizer, somehow make it save the sticker with this name: sticker_name
     sticker_path = fname
-    return Figure(Img(src=sticker_path, alt="stickerized image"), id="displayed-image")
+    print(sticker_name)
+    return Article(
+            H2('Step 3: Add to a collection'),
+            Form(hx_post="add-to-collection", hx_target="#main_content")(
+                Select(style="width: auto", id="attr1st")(
+                    Option("Nucklehead", value="Nucklehead", selected=True), Option("Fumblebees", value="Fumblebees")
+                ),
+                Button("Add", type="submit"), 
+            ),
+            Figure(
+                Img(src=sticker_path, alt="stickerized image"), 
+                id="displayed-image"), 
+            id="main_content"
+        )
 
 
+@rt('/add-to-collection')
+async def post(collection_name: str):
+    col = "flex flex-col"
+    bnset = "shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_4px_8px_rgba(0,0,0,0.5)]"
+    return Article(
+        accordion(id="uhhhh", question=collection_name, answer="put pictures here",
+                  question_cls="text-black s-body",
+        answer_cls="s-body text-black/80 col-span-full",
+        container_cls=f"{col} justify-between bg-soft-blue rounded-[1.25rem] {bnset}"),
+        id="main_content"
+    )
 
 
 
@@ -91,3 +117,13 @@ def sticker_preview(g):
     return Div(f"Generating gen {g.id} with prompt {g.prompt}", 
             id=f'gen-{g.id}', hx_get=f"/gens/{g.id}", 
             hx_trigger="every 2s", hx_swap="outerHTML", cls=grid_cls)
+
+
+
+def collection_accordion():
+    """UI components can be styled and reused.
+    UI libraries can be installed using `pip`."""
+    # accs = [accordion(id=id, question=q, answer=a,
+    #     question_cls="text-black s-body", answer_cls=a_cls, container_cls=c_cls)
+    #     for id,(q,a) in enumerate(qas)]
+    return accordion()
