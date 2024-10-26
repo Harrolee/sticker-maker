@@ -2,7 +2,7 @@ from io import BytesIO
 from fasthtml.common import *
 from pathlib import Path
 from PIL import Image, ImageOps
-from ui_components import accordion
+from ui.ui_components import accordion
 app,rt = fast_app()
 # gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
 # app = FastHTML(hdrs=(picolink, gridlink))
