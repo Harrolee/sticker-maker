@@ -1,6 +1,6 @@
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image, ImageFilter
 
-def create_mask(image: Image, threshold):
+def _create_mask(image: Image, threshold):
     mask = Image.new("L", image.size, 0)  # Start with a black mask
     pixels = image.load()
     mask_pixels = mask.load()
@@ -16,21 +16,21 @@ def create_mask(image: Image, threshold):
                 mask_pixels[x, y] = 255  # Person area is white in the mask
     return mask
 
-def border(input_path, output_path, border_size = 10, border_color = ()):
+def border(input_path, output_path, border_size = 15, border_color = ()):
     image = Image.open(input_path).convert("RGBA")
 
     black_threshold = 33
-    mask = create_mask(image, black_threshold)
+    mask = _create_mask(image, black_threshold)
     # dilate mask
-    dilated_mask = mask.filter(ImageFilter.MaxFilter(size=11))
+    dilated_mask = mask.filter(ImageFilter.MaxFilter(size=border_size))
     
     border_image = Image.new("RGBA", image.size, border_color + (255,))
     border_inside = Image.composite(border_image, image, dilated_mask)
     result = Image.composite(image, border_inside, mask)
 
     result.save(output_path)
-
+    return output_path
 
 if __name__ == "__main__":
     border_color = (173, 216, 230)
-    border("output/atWork.jpg", "output/border_atWork.png", border_color=border_color)
+    border("workspace/border_input/lifted_atWork_bigger.png", "workspace/output/border_atWork_15.png", border_color=border_color)

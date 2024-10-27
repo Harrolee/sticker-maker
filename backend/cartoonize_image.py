@@ -1,6 +1,4 @@
-import torch
-from diffusers import StableDiffusionInstructPix2PixPipeline
-from diffusers.utils import load_image
+
 
 # model_id = "instruction-tuning-sd/cartoonizer"
 # pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained(
@@ -13,17 +11,40 @@ from diffusers.utils import load_image
 # image = pipeline("Cartoonize the following image", image=image).images[0]
 # image.save("image.png")
 
-model_id = "instruction-tuning-sd/cartoonizer"
-pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained(
-    model_id, torch_dtype=torch.float16, use_auth_token=True
-).to("mps")
 
 def cartoonize(input_path, output_path):
+    import torch
+    from diffusers import StableDiffusionInstructPix2PixPipeline
+    from diffusers.utils import load_image
+
+    model_id = "instruction-tuning-sd/cartoonizer"
+    pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+        model_id, torch_dtype=torch.float16, use_auth_token=True
+    ).to("mps")
 
     image = load_image(input_path)
     image = pipeline("Cartoonize the following image", image=image).images[0]
     image.save(output_path)
 
+
+
+def cartoonize_replicate(input_path, output_path):
+    output = _sayak_cartoonizer(input_path)
+    with open(output_path, 'wb') as o:
+        o.write(output.read())
+    return output_path
+
+def _sayak_cartoonizer(input_path):
+    import replicate
+    image = open(input_path, "rb");
+    input = {
+        "image": image
+    }
+    output = replicate.run(
+        "harrolee/cartoonizer:uhhh what goes here?",
+        input=input
+    )
+    return output
 
 # from pathlib import Path
 
@@ -46,3 +67,6 @@ def cartoonize(input_path, output_path):
 #             #     input = i.read()
 #             #     output = remove(input, session=session)
 #             #     o.write(output)
+
+if __name__ == "__main__":
+    cartoonize("workspace/cartoonize_input/border_atWork_15.png", "workspace/output/cartoonized_border_atWork_15.png")
