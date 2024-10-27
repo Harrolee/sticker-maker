@@ -1,10 +1,9 @@
 import os
-import json
+from google.cloud.sql.connector import Connector, IPTypes
 import pg8000
 import sqlalchemy
-import functions_framework
-from google.cloud.sql.connector import Connector, IPTypes
-from flask import jsonify
+from dotenv import load_dotenv
+load_dotenv()
 
 def connect_with_connector() -> sqlalchemy.engine.base.Engine:
     """
@@ -15,14 +14,14 @@ def connect_with_connector() -> sqlalchemy.engine.base.Engine:
 
     instance_connection_name = os.environ[
         "INSTANCE_CONNECTION_NAME"
-    ]
-    db_user = os.environ["DB_USER"]
-    db_pass = os.environ["DB_PASS"]
-    db_name = os.environ["DB_NAME"]
+    ]  # e.g. 'project:region:instance'
+    db_user = os.environ["DB_USER"]  # e.g. 'my-db-user'
+    db_pass = os.environ["DB_PASS"]  # e.g. 'my-db-password'
+    db_name = os.environ["DB_NAME"]  # e.g. 'my-database'
 
     ip_type = IPTypes.PRIVATE if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC
 
-    # lazy cuz cloud function
+    # initialize Cloud SQL Python Connector object
     connector = Connector(refresh_strategy="lazy")
 
     def getconn() -> pg8000.dbapi.Connection:
@@ -43,7 +42,6 @@ def connect_with_connector() -> sqlalchemy.engine.base.Engine:
         creator=getconn,
     )
     return pool, connector
-
 
 def write_to_db(gumroad_product_id, quantity):
     pool, connector = connect_with_connector()
@@ -76,21 +74,9 @@ def write_to_db(gumroad_product_id, quantity):
             db_conn.execute(update_user_credits(sticker_id, quantity))
             # commit transaction (SQLAlchemy v2.X.X is commit as you go)
             db_conn.commit()
-            return jsonify({"Hype": "Data inserted successfully."}), 200
         except Exception as e:
             print(f"Error inserting data: {e}")
-            return jsonify({"error": "Failed to update database"}), 500
         finally:
             connector.close()
 
 
-@functions_framework.http
-def process_sale(request):
-    if request.content_type != 'application/x-www-form-urlencoded':
-        return jsonify({"error": "Unsupported Content-Type"}), 400
-    try:
-        quantity = request.form.get('quantity')
-        gumroad_product_id = request.form.get('product_id')
-    except (KeyError, TypeError, json.JSONDecodeError):
-        return jsonify({"error": "Invalid request; 'quantity' and 'gumroad_product_id' are required."}), 400    
-    write_to_db(gumroad_product_id, quantity)

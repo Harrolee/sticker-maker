@@ -41,7 +41,7 @@ def _sayak_cartoonizer(input_path):
         "image": image
     }
     output = replicate.run(
-        "harrolee/cartoonizer:uhhh what goes here?",
+        "harrolee/cartoonizer:e96f4e78e06609924abda7160e8a1073dfde9daeebed1b8fca99a6d085b38a03",
         input=input
     )
     return output
@@ -69,4 +69,5 @@ def _sayak_cartoonizer(input_path):
 #             #     o.write(output)
 
 if __name__ == "__main__":
-    cartoonize("workspace/cartoonize_input/border_atWork_15.png", "workspace/output/cartoonized_border_atWork_15.png")
+    # export the REPLICATE_API_TOKEN for this to work
+    cartoonize_replicate("workspace/cartoonize_input/border_atWork_15.png", "workspace/output/cartoonized_border_atWork_15.png")
