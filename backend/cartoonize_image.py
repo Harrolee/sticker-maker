@@ -12,14 +12,14 @@
 # image.save("image.png")
 
 
-def cartoonize(input_path, output_path):
+def cartoonize_local(input_path, output_path):
     import torch
     from diffusers import StableDiffusionInstructPix2PixPipeline
     from diffusers.utils import load_image
 
     model_id = "instruction-tuning-sd/cartoonizer"
     pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained(
-        model_id, torch_dtype=torch.float16, use_auth_token=True
+        model_id, torch_dtype=torch.float16
     ).to("mps")
 
     image = load_image(input_path)

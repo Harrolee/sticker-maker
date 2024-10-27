@@ -68,6 +68,7 @@ def write_to_db(gumroad_product_id, quantity):
         """
     )
 
+    response = ''
     with pool.connect() as db_conn:
         try:
             sticker_id = db_conn.execute(get_sticker_id(gumroad_product_id)).fetchall()
@@ -76,12 +77,13 @@ def write_to_db(gumroad_product_id, quantity):
             db_conn.execute(update_user_credits(sticker_id, quantity))
             # commit transaction (SQLAlchemy v2.X.X is commit as you go)
             db_conn.commit()
-            return jsonify({"Hype": "Data inserted successfully."}), 200
+            response = jsonify({"Hype": "Data inserted successfully."}), 200
         except Exception as e:
             print(f"Error inserting data: {e}")
-            return jsonify({"error": "Failed to update database"}), 500
+            response = jsonify({"error": "Failed to update database"}), 500
         finally:
             connector.close()
+            return response
 
 
 @functions_framework.http
@@ -93,4 +95,4 @@ def process_sale(request):
         gumroad_product_id = request.form.get('product_id')
     except (KeyError, TypeError, json.JSONDecodeError):
         return jsonify({"error": "Invalid request; 'quantity' and 'gumroad_product_id' are required."}), 400    
-    write_to_db(gumroad_product_id, quantity)
+    return write_to_db(gumroad_product_id, quantity)
