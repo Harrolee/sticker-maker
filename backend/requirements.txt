@@ -1,3 +1,4 @@
 diffusers
 rembg
 torch
+replicate
