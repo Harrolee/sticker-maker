@@ -40,11 +40,12 @@ def _sayak_cartoonizer(input_path):
     input = {
         "image": image
     }
+    print('sending request to cartoonizer on replicate')
     output = replicate.run(
-        "harrolee/cartoonizer:e96f4e78e06609924abda7160e8a1073dfde9daeebed1b8fca99a6d085b38a03",
+        "harrolee/cartoonizer:b4b9bb25b0aefaa73cf6780d3801896fc12a0dae64d177790f842c183b18cecb",
         input=input
     )
-    return output
+    return output[0]
 
 # from pathlib import Path
 

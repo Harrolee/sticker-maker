@@ -32,4 +32,5 @@ def lift(input_path, output_path):
     return output_path
 
 # Example usage
-lift('workspace/input/atWork.png', 'workspace/output/lifted_atWork_bigger.png')
+if "__main__" == __name__:
+    lift('workspace/input/atWork.png', 'workspace/output/lifted_atWork_bigger.png')

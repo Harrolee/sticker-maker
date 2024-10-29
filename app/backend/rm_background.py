@@ -16,10 +16,12 @@ def single_lucataco_rm_background(input_path, output_path):
 
 def _lucataco(input_path):
     import replicate
+
     image = open(input_path, "rb");
     input = {
         "image": image
     }
+    print('sending request to remove-bg on replicate')
     output = replicate.run(
         "lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1",
         input=input

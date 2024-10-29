@@ -1,8 +1,10 @@
+import uuid
 from io import BytesIO
 from fasthtml.common import *
 from pathlib import Path
 from PIL import Image, ImageOps
-from ui.ui_components import accordion
+from ui_components import accordion
+from backend.main import stickerize
 app,rt = fast_app()
 # gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
 # app = FastHTML(hdrs=(picolink, gridlink))
@@ -21,50 +23,88 @@ def collection(id):
 # Main page
 @rt('/')
 def get():
-    # add = Form(Group(upl, inp, Button("Sticker!")), hx_post="/upload-img", target_id='displayed-image', hx_swap="outerHTML")
-    # sticker_containers = [sticker_preview(g) for g in gens(limit=10)] # Start with last 10
-    # gen_list = Div(*sticker_containers[::-1], id='gen-list', cls="row") # flexbox container: class = row
     return Title('Image Upload Demo'), Main(image_upload(), cls='container', id='root')
 
 def image_upload(): 
     return Article(
         H2('Step 1: Upload an image'),
-        Form(hx_encoding='multipart/form-data', hx_post="/upload-image", hx_target=f"#main_content")(
-            Input(type='file', id='imageup', accept='image/*'),
-            Button("Upload", type="submit", cls='secondary'),
+        Form(hx_post="stickerize", hx_target="#main_content", 
+                hx_encoding="multipart/form-data", hx_trigger="submit")(
+            Input(type='text', id='sticker_name', accept='text/*'),
+            Input(type='file', id='image_input', accept='image/*'),
+            Button("Stickerize Image", type="submit"), 
         ),
         id="main_content"
     )
 
-@rt('/upload-image')
-async def post(imageup: UploadFile):
-    bytes = await imageup.read()
-    img = Image.open(BytesIO(bytes))
-    img.thumbnail((1024, 1024))
-    img = ImageOps.exif_transpose(img) # Fix image rotation based on exif metadata
-    fname = f"workspace/input/temp.png"
-    img.save(fname)
-    return Article(
-            H2('Step 2: Name your sticker'),
-            Form(hx_post="stickerize", hx_target="#main_content")(
-                Input(type='text', id='sticker_name', accept='text/*'),
-                Button("Stickerize Image", type="submit"), 
-            ),
-            Figure(
-                Img(src=fname, alt="preview image"), 
-                id="displayed-image"), 
-            id="main_content"
-        )
+# @rt('/upload-image')
+# async def post(imageup: UploadFile):
+#     bytes = await imageup.read()
+#     img = Image.open(BytesIO(bytes))
+#     img.thumbnail((1024, 1024))
+#     img = ImageOps.exif_transpose(img) # Fix image rotation based on exif metadata
+#     fname = f"workspace/input/temp.png"
+#     img.save(fname)
+#     return Article(
+#             H2('Step 2: Name your sticker'),
+#             Form(hx_post="stickerize", hx_target="#main_content")(
+#                 Input(type='text', id='sticker_name', accept='text/*'),
+#                 Button("Stickerize Image", type="submit"), 
+#             ),
+#             Figure(
+#                 Img(src=fname, alt="preview image"), 
+#                 id="displayed-image"), 
+#             id="main_content"
+#         )
 
 # add the ability to stickerize it
 
 @rt('/stickerize')
-async def post(sticker_name: str):
-    fname = f"collections/1/test2.png"
-    img = Image.open(fname)
+async def post(sticker_name: str, image_input: UploadFile):
+    # show a loading spinner until the process is complete
+    bytes = await image_input.read()
+    img = Image.open(BytesIO(bytes))
+    img.thumbnail((1024, 1024))
+    img = ImageOps.exif_transpose(img)
+    basename = str(uuid.uuid4())[:4]
+    fname = f"workspace/input/{basename}-temp.png"
+    img.save(fname)
+    
+    output_path = stickerize(f"{basename}-temp.png")
+    
     # call stickerizer, somehow make it save the sticker with this name: sticker_name
-    sticker_path = fname
+
     print(sticker_name)
+    return Article(
+            H2('Step 2: Post to GumRoad', id="narrator"),
+            Form(hx_post="post-to-gumroad", hx_target="#narrator")(
+                Button("Post", type="submit"), 
+            ),
+            Figure(
+                Img(src=output_path, alt="stickerized image"), 
+                id="displayed-image"), 
+            id="main_content"
+        )
+
+
+@rt('/post-to-gumroad')
+async def post():
+    # create product on gumroad
+    # store product id in database
+    # show the product id to user
+    # show the user a link to the product on Gumroad
+
+    return A("Sticker name here", href="https://www.google.com", id="narrator")
+        # Article(
+            # H2('Here\'s your link', href="https://www.google.com", id="narrator"),
+        #     Figure(
+        #         Img(src=img, alt="stickerized image"), 
+        #         id="displayed-image"), 
+        #     id="main_content"
+        # )
+
+
+def collection():
     return Article(
             H2('Step 3: Add to a collection'),
             Form(hx_post="add-to-collection", hx_target="#main_content")(
@@ -74,11 +114,10 @@ async def post(sticker_name: str):
                 Button("Add", type="submit"), 
             ),
             Figure(
-                Img(src=sticker_path, alt="stickerized image"), 
+                Img(src=img, alt="stickerized image"), 
                 id="displayed-image"), 
             id="main_content"
         )
-
 
 @rt('/add-to-collection')
 async def post(collection_name: str):

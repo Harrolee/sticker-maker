@@ -1,24 +1,25 @@
-from rm_background import single_lucataco_rm_background
+from backend.rm_background import single_lucataco_rm_background
 from backend.file_handler import multiple_images
-from cartoonize_image import  cartoonize_replicate
-from lift import lift
-from border import border
-from tab import tab
+from backend.cartoonize_image import  cartoonize_replicate
+from backend.lift import lift
+from backend.border import border
+from backend.tab import tab
 from dotenv import load_dotenv
 load_dotenv()
 
 work_dir = 'workspace'
 
-filename = 'raw_atwork.png'
+# filename = 'raw_atwork.png'
 
-path = single_lucataco_rm_background(work_dir + '/input', work_dir + '/cartoonize_input' + '/' + filename)
-path = cartoonize_replicate(path, work_dir + '/rm_background_input' + '/' + filename)
-path = single_lucataco_rm_background(path, work_dir + '/lift_input'+ '/' + filename)
-path = lift(path, work_dir + '/border_input'+ '/' + filename)
-path = border(path, work_dir + '/tab_input'+ '/' + filename)
-path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename)
-print(path)
-
+def stickerize(filename):
+    path = single_lucataco_rm_background(work_dir + '/input' + '/' + filename, work_dir + '/cartoonize_input' + '/' + filename)
+    path = cartoonize_replicate(path, work_dir + '/rm_background_input' + '/' + filename)
+    path = single_lucataco_rm_background(path, work_dir + '/lift_input'+ '/' + filename)
+    path = lift(path, work_dir + '/border_input'+ '/' + filename)
+    path = border(path, work_dir + '/tab_input'+ '/' + filename)
+    path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename) # should I cartoonize the whole thing at the end, 
+    print(path)
+    return path
 
 # extensions = ['jpg', 'png']
 # multiple_images(work_dir + '/input', work_dir + '/cartoonize_input', extensions, rm_background)  
