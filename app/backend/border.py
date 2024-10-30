@@ -16,14 +16,13 @@ def _create_mask(image: Image, threshold):
                 mask_pixels[x, y] = 255  # Person area is white in the mask
     return mask
 
-def border(input_path, output_path, border_size = 15, border_color = ()):
+def border(input_path, output_path, border_size = 15, border_color = (173, 216, 230)):
     image = Image.open(input_path).convert("RGBA")
 
     black_threshold = 33
     mask = _create_mask(image, black_threshold)
     # dilate mask
     dilated_mask = mask.filter(ImageFilter.MaxFilter(size=border_size))
-    
     border_image = Image.new("RGBA", image.size, border_color + (255,))
     border_inside = Image.composite(border_image, image, dilated_mask)
     result = Image.composite(image, border_inside, mask)
@@ -33,4 +32,4 @@ def border(input_path, output_path, border_size = 15, border_color = ()):
 
 if __name__ == "__main__":
     border_color = (173, 216, 230)
-    border("workspace/border_input/lifted_atWork_bigger.png", "workspace/output/border_atWork_15.png", border_color=border_color)
+    border("workspace/border_input/b69d-temp.png", "workspace/output/bordered-b69d-temp.png", border_color=border_color)

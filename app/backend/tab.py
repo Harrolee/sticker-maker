@@ -25,8 +25,8 @@ def find_border(image, draw_path=True):
     border_color = None
 
     # Create a draw object if we want to visualize the path
-    result = image.copy()
-    draw = ImageDraw.Draw(result) if draw_path else None
+    # result = image.copy()
+    # draw = ImageDraw.Draw(result) if draw_path else None
 
     # Traverse upward to find the first non-transparent pixel
     while y >= 0:
@@ -174,11 +174,6 @@ if __name__ == '__main__':
     tab("workspace/tab_input/border_atWork.png", "workspace/output/tabbed2.png", tab_text="lee apple")
 
 
-# from PIL import Image
-
-# def tab(input_path, output_path):
-#     image = Image.open(input_path)
-
 #     # Algorithm
 #     # 1. find a tab placement point
 #     # 1.1 start in center bottom 
@@ -190,5 +185,3 @@ if __name__ == '__main__':
 #     # 5. cleanup
 #     # 5.1 check for any pixels between the newly created tab and the border that are not the border's color
 #     # 5.1 replace those pixels with the border's color
-
-#     image.save(output_path)

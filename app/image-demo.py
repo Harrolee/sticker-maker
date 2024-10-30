@@ -70,7 +70,7 @@ async def post(sticker_name: str, image_input: UploadFile):
     fname = f"workspace/input/{basename}-temp.png"
     img.save(fname)
     
-    output_path = stickerize(f"{basename}-temp.png")
+    output_path = stickerize(f"{basename}-temp.png", sticker_name)
     
     # call stickerizer, somehow make it save the sticker with this name: sticker_name
 
