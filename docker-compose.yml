@@ -1,0 +1,22 @@
+services:
+  # PostgreSQL database service
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trackbox
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Fake local SMTP server
+  maildev:
+    image: maildev/maildev
+    ports:
+      - "1025:1025" # SMTP port
+      - "1080:1080" # Web interface port
+
+volumes:
+  postgres_data:

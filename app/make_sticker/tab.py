@@ -13,7 +13,7 @@ def load_image(input_path):
     image = Image.open(input_path).convert('RGBA')
     return image
 
-def find_border(image, draw_path=True):
+def find_border(image, draw_path=False):
     """
     Find the border color by traversing from the bottom center upwards.
     Optionally draw a red path during traversal.
@@ -25,8 +25,8 @@ def find_border(image, draw_path=True):
     border_color = None
 
     # Create a draw object if we want to visualize the path
-    # result = image.copy()
-    # draw = ImageDraw.Draw(result) if draw_path else None
+    result = image.copy()
+    draw = ImageDraw.Draw(result) if draw_path else None
 
     # Traverse upward to find the first non-transparent pixel
     while y >= 0:
@@ -145,7 +145,7 @@ def tab(input_path, output_path, tab_text: str):
     image = load_image(input_path)
 
     # 2. Find border and mark path
-    result, (border_x, border_y), border_color = find_border(image, draw_path=True)
+    result, (border_x, border_y), border_color = find_border(image)
 
     # 3. Prepare to draw the tab
     tab_width, tab_height = 80, 30

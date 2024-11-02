@@ -1,21 +1,18 @@
-from rm_background import single_lucataco_rm_background
-from backend.file_handler import multiple_images
-from backend.cartoonize_image import  cartoonize_replicate
-from backend.lift import lift
-from backend.border import border
-from backend.tab import tab
-from backend.config import AppConfig
+from make_sticker.rm_background import single_lucataco_rm_background
+from make_sticker.cartoonize_image import cartoonize
+from make_sticker.lift import lift
+from make_sticker.border import border
+from make_sticker.tab import tab
+from make_sticker.config import AppConfig
 
-from dotenv import load_dotenv
-load_dotenv()
-
-app_config = AppConfig()
+config = AppConfig()
 
 work_dir = 'workspace'
 
 def stickerize(filename, tab_text):
+
     path = single_lucataco_rm_background(work_dir + '/input' + '/' + filename, work_dir + '/cartoonize_input' + '/' + filename)
-    path = cartoonize_replicate(path, work_dir + '/rm_background_input' + '/' + filename)
+    path = cartoonize(path, work_dir + '/rm_background_input' + '/' + filename, config)
     path = single_lucataco_rm_background(path, work_dir + '/lift_input'+ '/' + filename)
     path = lift(path, work_dir + '/border_input'+ '/' + filename)
     path = border(path, work_dir + '/tab_input'+ '/' + filename)

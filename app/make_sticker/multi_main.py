@@ -1,5 +1,5 @@
 from rm_background import rm_background
-from backend.file_handler import multiple_images
+from make_sticker.file_handler import multiple_images
 from cartoonize_image import cartoonize
 from lift import lift
 from border import border

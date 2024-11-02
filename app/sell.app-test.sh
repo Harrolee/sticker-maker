@@ -1,3 +1,4 @@
+#!/bin/bash
 curl --request POST \
   --url https://sell.app/api/v2/products \
   --header 'Authorization: Bearer {token here}' \

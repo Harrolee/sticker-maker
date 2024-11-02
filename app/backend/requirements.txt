@@ -1,4 +1,0 @@
-diffusers
-rembg
-torch
-replicate
