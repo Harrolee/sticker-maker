@@ -17,8 +17,7 @@ def send_email(order: OrderInfo, config: AppConfig):
     msg["Subject"] = f"New Order - {order.order_id}"
     msg.attach(MIMEText(body, "plain"))
 
-    # Connect to Gmail's SMTP server
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
         server.starttls()  # Enable security
         server.login(config.sender_email, config.sender_email_password)
         server.sendmail(config.sender_email, config.supplier_email, msg.as_string())
