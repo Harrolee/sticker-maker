@@ -22,6 +22,7 @@ class StickerConfig():
 
         # storefront
         self.sell_app_storefront_name = config["SELL_APP_STOREFRONT_NAME"]
+        self.sell_app_token = config["SELL_APP_TOKEN"]
 
         # db
         self.db_user = config["DB_USER"]

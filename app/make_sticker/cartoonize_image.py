@@ -2,7 +2,7 @@ from make_sticker.config import StickerConfig
 
 def cartoonize(input_path, output_path, config: StickerConfig):
     if config.is_local == 'true':
-        return _cartoonize_local(input_path, output_path)
+        return "workspace/rm_background_input/local_run.png"#_cartoonize_local(input_path, output_path)
     else:
         return _cartoonize_replicate(input_path, output_path, config)
 

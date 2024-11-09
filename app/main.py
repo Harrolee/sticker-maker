@@ -1,18 +1,19 @@
 import uuid
 from io import BytesIO
 from fasthtml.common import *
+from fastsql import *
 from pathlib import Path
 from PIL import Image, ImageOps
 
+from services.db import save_sticker
 from services.storefront import StorefrontProduct, publish_sticker
 from ui_components import accordion
-
 from make_sticker.main import stickerize
+
 
 app,rt = fast_app()
 # gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
 # app = FastHTML(hdrs=(picolink, gridlink))
-
 
 collections_path = Path('collections')
 
@@ -64,7 +65,7 @@ def image_upload():
 # add the ability to stickerize it
 
 @rt('/stickerize')
-async def post(sticker_name: str, image_input: UploadFile):
+async def post(sticker_name: str, image_input: UploadFile, session):
     # show a loading spinner until the process is complete
     bytes = await image_input.read()
     img = Image.open(BytesIO(bytes))
@@ -75,10 +76,9 @@ async def post(sticker_name: str, image_input: UploadFile):
     img.save(fname)
     
     output_path = stickerize(f"{basename}-temp.png", sticker_name)
-    
-    # call stickerizer, somehow make it save the sticker with this name: sticker_name
 
-    print(sticker_name)
+    session['sticker_url'] = output_path
+    session['sticker_name'] = sticker_name
     return Article(
             H2('Step 2: Post to Storefront', id="narrator"),
             Form(hx_post="post-to-storefront", hx_target="#narrator")(
@@ -92,12 +92,22 @@ async def post(sticker_name: str, image_input: UploadFile):
 
 
 @rt('/post-to-storefront')
-async def post(storefront_product: StorefrontProduct):
-    
+async def post(session):
+    storefront_product = StorefrontProduct(
+        title=session['sticker_name'], 
+        description=f"Custom made {session['sticker_name']} sticker", 
+        redirect_url="https://www.google.com",
+        image_url=session['sticker_url'],
+        price=4
+    )
     # create product on storefront
     storefront_product_id, product_url = publish_sticker(storefront_product)
     
-    
+    # write sticker to database
+    # connect the created sticker to the user
+    USER_ID=7777
+    save_sticker(storefront_product_id, storefront_product.title, USER_ID)
+
     # store product id in database
     # show the product id to user
     # show the user a link to the product on storefront

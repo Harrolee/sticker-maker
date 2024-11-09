@@ -14,6 +14,7 @@ def _gatis(input_path, output_path, session=None):
             input = i.read()
             output = remove(input, session=session) if session else remove(input)
             o.write(output)
+    return output_path
 
 def single_lucataco_rm_background(input_path, output_path, config):
     output = _lucataco(input_path, config=config)
