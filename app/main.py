@@ -5,7 +5,7 @@ from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
 from auth_config import AuthConfig
-from services.db import create_user, find_user_id_by_email, save_sticker
+from services.db import create_user, find_user_info_by_email, save_sticker
 from services.storefront import StorefrontProduct, publish_sticker
 from ui_components import accordion
 from make_sticker.main import stickerize
@@ -56,6 +56,7 @@ def create_account(name: str, email: str, session):
     if user_id == None:
         return P(f"Error creating account")
     session['user_id'] = user_id
+    session['user_name'] = name
     return JSONResponse(
         content={},
         status_code=200,
@@ -64,10 +65,11 @@ def create_account(name: str, email: str, session):
 
 @app.get('/complete-login')
 def complete_login(email: str, session):
-    user_id = find_user_id_by_email(email)
+    user_id, name = find_user_info_by_email(email)
     if user_id == None:
         return P(f"Could not find a user account with email {email}")
     session['user_id'] = user_id
+    session['user_name'] = name
     return JSONResponse(
         content={},
         status_code=200,
@@ -158,31 +160,15 @@ async def post(sticker_name: str, image_input: UploadFile, session):
 async def post(session):
     storefront_product = StorefrontProduct(
         title=session['sticker_name'], 
-        description=f"Custom made {session['sticker_name']} sticker", 
-        redirect_url="https://www.google.com",
+        description=f"Custom made {session['sticker_name']} sticker, made by {session['user_name']}", 
+        redirect_url="http://www.localhost:5001",
         image_url=session['sticker_url'],
-        price=4
+        price=400
     )
-    # create product on storefront
     storefront_product_id, product_url = publish_sticker(storefront_product)
-    
-    # write sticker to database
-    # connect the created sticker to the user
-    USER_ID=7777
-    save_sticker(storefront_product_id, storefront_product.title, USER_ID)
-
-    # store product id in database
-    # show the product id to user
-    # show the user a link to the product on storefront
-
-    return A(storefront_product.title, href=product_url, id="narrator")
-        # Article(
-            # H2('Here\'s your link', href=product_url, id="narrator"),
-        #     Figure(
-        #         Img(src=img, alt="stickerized image"), 
-        #         id="displayed-image"), 
-        #     id="main_content"
-        # )
+    save_sticker(storefront_product_id, storefront_product.title, session['user_id'])
+    # should also save the image to s3
+    return A(f"Here's a link to your sticker: {storefront_product.title}", href=product_url, id="narrator")
 
 
 def collection():

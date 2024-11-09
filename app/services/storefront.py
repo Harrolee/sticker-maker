@@ -85,15 +85,13 @@ def _sticker_go_live(product: StorefrontProduct, storefront_product_id):
     response = requests.request("POST", f"https://sell.app/api/v2/products/{storefront_product_id}/variants", json=payload, headers=headers)
     if response.status_code != 201:
         raise Exception(f"failed to post product to storefront. Response info follows:\n{response.json()}")
-    
-    product_url = f"https://{config.sell_app_storefront_name}.sell.app/product/{product.title}?store={config.sell_app_storefront_name}"
-    return product_url
 
 
 def publish_sticker(product: StorefrontProduct):
     try:
         storefront_product_id = _publish_draft_sticker(product)
-        product_url = _sticker_go_live(product, storefront_product_id)
+        _sticker_go_live(product, storefront_product_id)
+        product_url = f"https://{config.sell_app_storefront_name}.sell.app/product/{product.title.replace(' ', '-')}?store={config.sell_app_storefront_name}"
         return storefront_product_id, product_url
     except RuntimeError as error:
         raise RuntimeError(f"could not publish sticker. error: {error}")

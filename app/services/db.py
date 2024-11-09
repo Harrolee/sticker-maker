@@ -37,14 +37,14 @@ def all_users() -> int | None:
         results = result.all()
     return results
 
-def find_user_id_by_email(email) -> int | None:
+def find_user_info_by_email(email) -> tuple | None:
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT user_id FROM users WHERE email = :email"),
+            text("SELECT user_id, name FROM users WHERE email = :email"),
             {"email": email}
         )
-        user_id = result.scalar_one_or_none()
-    return user_id
+        user_id, name = result.first()
+    return user_id, name
 
 
 def user_in_db(user_id):
