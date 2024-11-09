@@ -1,17 +1,24 @@
 import numpy as np
+from scipy.ndimage import gaussian_filter, binary_erosion, binary_dilation
 from PIL import Image, ImageFilter
 
-def _create_mask(image: Image, alpha_threshold: int = 5):
-    # Convert image to a NumPy array
+def _create_mask(image: Image, alpha_threshold=5, erosion_iterations=1, dilation_iterations=1, smooth_edges_sigma=1.0):
+    # Step 1: Convert image to a binary mask based on the alpha channel
     image_array = np.array(image)
+    alpha_channel = image_array[:, :, 3]
+    mask_array = np.where(alpha_channel > alpha_threshold, 1, 0).astype(np.uint8)  # Binary mask (0 or 1)
 
-    # Create a mask based on the alpha channel
-    alpha_channel = image_array[:, :, 3]  # Extract the alpha channel
-    mask_array = np.where(alpha_channel > alpha_threshold, 255, 0).astype(np.uint8)
+    # Step 2: Refine the mask with morphological operations
+    mask_array = binary_erosion(mask_array, iterations=erosion_iterations)
+    mask_array = binary_dilation(mask_array, iterations=dilation_iterations)
 
-    # Convert mask array back to a Pillow image
-    mask = Image.fromarray(mask_array, mode="L")
-    return mask
+    # Step 3: Smooth the edges of the mask
+    mask_array = gaussian_filter(mask_array.astype(float), sigma=smooth_edges_sigma)
+    mask_array = np.clip(mask_array * 255, 0, 255).astype(np.uint8)  # Convert back to 0-255 range
+
+    # Convert to PIL Image
+    refined_mask = Image.fromarray(mask_array, mode="L")
+    return refined_mask
 
 def border(input_path, output_path, border_size=15, border_color=(173, 216, 230)):
     image = Image.open(input_path).convert("RGBA")
