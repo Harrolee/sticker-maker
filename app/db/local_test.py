@@ -43,12 +43,12 @@ def connect_with_connector() -> sqlalchemy.engine.base.Engine:
     )
     return pool, connector
 
-def write_to_db(gumroad_product_id, quantity):
+def write_to_db(storefront_product_id, quantity):
     pool, connector = connect_with_connector()
-    get_sticker_id = lambda gumroad_product_id: sqlalchemy.text(
+    get_sticker_id = lambda storefront_product_id: sqlalchemy.text(
         f"""
         SELECT sticker_id FROM "public".stickers
-        WHERE gumroad_product_id = '{gumroad_product_id}'
+        WHERE gumroad_product_id = '{storefront_product_id}'
         """
     )
     update_purchase_count = lambda sticker_id, quantity: sqlalchemy.text(
@@ -68,7 +68,7 @@ def write_to_db(gumroad_product_id, quantity):
 
     with pool.connect() as db_conn:
         try:
-            sticker_id = db_conn.execute(get_sticker_id(gumroad_product_id)).fetchall()
+            sticker_id = db_conn.execute(get_sticker_id(storefront_product_id)).fetchall()
             sticker_id = sticker_id[0][0]
             db_conn.execute(update_purchase_count(sticker_id, quantity))
             db_conn.execute(update_user_credits(sticker_id, quantity))

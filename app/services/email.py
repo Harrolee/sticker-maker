@@ -2,11 +2,11 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from app.make_sticker.config import AppConfig
+from app.make_sticker.config import StickerConfig
 from app.services.models import OrderInfo
 
 
-def send_email(order: OrderInfo, config: AppConfig):
+def send_email(order: OrderInfo, config: StickerConfig):
     # Email content
     body = order.pretty_print()
 

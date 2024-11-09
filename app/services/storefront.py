@@ -3,10 +3,10 @@ import os
 import requests
 from dataclasses import dataclass
 
-
 from dotenv import load_dotenv
+from make_sticker.config import StickerConfig
 
-from app.make_sticker.config import AppConfig
+config = StickerConfig()
 load_dotenv()
 
 @dataclass
@@ -22,7 +22,7 @@ def _delivery_text(product_name, support_email):
     chosen_flair = randint(0,len(delivery_text_flair))
     return f"{chosen_flair}\nWe'll send your order to the shipping address you supplied in this purchase form.\nIf you have any concerns, email {support_email} and reference the serial number on your order"
 
-def _publish_draft_sticker(product: StorefrontProduct, config: AppConfig):
+def _publish_draft_sticker(product: StorefrontProduct, config: StickerConfig):
     token = os.environ["SELL_APP_TOKEN"]
 
     headers = {
@@ -49,7 +49,7 @@ def _publish_draft_sticker(product: StorefrontProduct, config: AppConfig):
         return response.json()["data"]["id"]
     raise Exception(f"failed to post product to storefront. Response info follows:\n{response.json()}")
 
-def _sticker_go_live(product: StorefrontProduct, config: AppConfig, storefront_product_id):
+def _sticker_go_live(product: StorefrontProduct, config: StickerConfig, storefront_product_id):
     token = os.environ["SELL_APP_TOKEN"]
     payload = {
         "title": product.title,
@@ -88,11 +88,18 @@ def _sticker_go_live(product: StorefrontProduct, config: AppConfig, storefront_p
     response = requests.request("POST", f"https://sell.app/api/v2/products/{storefront_product_id}/variants", json=payload, headers=headers)
     if response.status_code != 201:
         raise Exception(f"failed to post product to storefront. Response info follows:\n{response.json()}")
+    
+    product_url = f"https://{config.sell_app_storefront_name}.sell.app/product/{product.title}?store={config.sell_app_storefront_name}"
+    return product_url
 
 
-def publish_sticker(product: StorefrontProduct, config: AppConfig):
-    storefront_product_id = _publish_draft_sticker(product, config)
-    _sticker_go_live(storefront_product_id)
+def publish_sticker(product: StorefrontProduct):
+    try:
+        storefront_product_id = _publish_draft_sticker(product)
+        product_url = _sticker_go_live(storefront_product_id)
+        return storefront_product_id, product_url
+    except RuntimeError as error:
+        raise RuntimeError(f"could not publish sticker. error: {error}")
 
 
 if __name__ == "__main__":

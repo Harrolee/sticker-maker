@@ -1,19 +1,19 @@
-from make_sticker.rm_background import single_lucataco_rm_background
+from make_sticker.rm_background import remove_background
 from make_sticker.cartoonize_image import cartoonize
 from make_sticker.lift import lift
 from make_sticker.border import border
 from make_sticker.tab import tab
-from make_sticker.config import AppConfig
+from make_sticker.config import StickerConfig
 
-config = AppConfig()
+config = StickerConfig()
 
 work_dir = 'workspace'
 
 def stickerize(filename, tab_text):
 
-    path = single_lucataco_rm_background(work_dir + '/input' + '/' + filename, work_dir + '/cartoonize_input' + '/' + filename)
+    path = remove_background(work_dir + '/input' + '/' + filename, work_dir + '/cartoonize_input' + '/' + filename, config)
     path = cartoonize(path, work_dir + '/rm_background_input' + '/' + filename, config)
-    path = single_lucataco_rm_background(path, work_dir + '/lift_input'+ '/' + filename)
+    path = remove_background(path, work_dir + '/lift_input'+ '/' + filename, config)
     path = lift(path, work_dir + '/border_input'+ '/' + filename)
     path = border(path, work_dir + '/tab_input'+ '/' + filename)
     path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename, tab_text=tab_text) # should I cartoonize the whole thing at the end, 

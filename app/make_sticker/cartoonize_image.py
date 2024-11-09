@@ -1,10 +1,10 @@
-from make_sticker.config import AppConfig
+from make_sticker.config import StickerConfig
 
-def cartoonize(input_path, output_path, config: AppConfig):
+def cartoonize(input_path, output_path, config: StickerConfig):
     if config.is_local == 'true':
         return _cartoonize_local(input_path, output_path)
     else:
-        _cartoonize_replicate(input_path, output_path, config)
+        return _cartoonize_replicate(input_path, output_path, config)
 
 def _cartoonize_local(input_path, output_path):
     import torch
@@ -15,7 +15,7 @@ def _cartoonize_local(input_path, output_path):
     pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained(
         model_id, torch_dtype=torch.float16
     ).to("mps")
-
+    print(f"image path is {input_path}")
     image = load_image(input_path)
     image = pipeline("Cartoonize the following image", image=image).images[0]
     image.save(output_path)
@@ -26,7 +26,7 @@ def _cartoonize_replicate(input_path, output_path, config):
         o.write(output.read())
     return output_path
 
-def _sayak_cartoonizer(input_path, config: AppConfig):
+def _sayak_cartoonizer(input_path, config: StickerConfig):
     from replicate.client import Client
     client = Client(api_token=config.replicate_token)
     image = open(input_path, "rb");
@@ -35,7 +35,7 @@ def _sayak_cartoonizer(input_path, config: AppConfig):
     }
     print('sending request to cartoonizer on replicate')
     output = client.run(
-        f"harrolee/cartoonizer:{config.replicate_model_hash}",
+        f"harrolee/cartoonizer:{config.replicate_cartoonize_model_hash}",
         input=input
     )
     return output[0]

@@ -3,8 +3,12 @@ from io import BytesIO
 from fasthtml.common import *
 from pathlib import Path
 from PIL import Image, ImageOps
+
+from services.storefront import StorefrontProduct, publish_sticker
 from ui_components import accordion
+
 from make_sticker.main import stickerize
+
 app,rt = fast_app()
 # gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
 # app = FastHTML(hdrs=(picolink, gridlink))
@@ -76,8 +80,8 @@ async def post(sticker_name: str, image_input: UploadFile):
 
     print(sticker_name)
     return Article(
-            H2('Step 2: Post to GumRoad', id="narrator"),
-            Form(hx_post="post-to-gumroad", hx_target="#narrator")(
+            H2('Step 2: Post to Storefront', id="narrator"),
+            Form(hx_post="post-to-storefront", hx_target="#narrator")(
                 Button("Post", type="submit"), 
             ),
             Figure(
@@ -87,16 +91,20 @@ async def post(sticker_name: str, image_input: UploadFile):
         )
 
 
-@rt('/post-to-gumroad')
-async def post():
-    # create product on gumroad
+@rt('/post-to-storefront')
+async def post(storefront_product: StorefrontProduct):
+    
+    # create product on storefront
+    storefront_product_id, product_url = publish_sticker(storefront_product)
+    
+    
     # store product id in database
     # show the product id to user
-    # show the user a link to the product on Gumroad
+    # show the user a link to the product on storefront
 
-    return A("Sticker name here", href="https://www.google.com", id="narrator")
+    return A(storefront_product.title, href=product_url, id="narrator")
         # Article(
-            # H2('Here\'s your link', href="https://www.google.com", id="narrator"),
+            # H2('Here\'s your link', href=product_url, id="narrator"),
         #     Figure(
         #         Img(src=img, alt="stickerized image"), 
         #         id="displayed-image"), 

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: trackbox
+      POSTGRES_DB: stickermaker
     ports:
       - "5432:5432"
     volumes:
