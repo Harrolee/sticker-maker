@@ -17,7 +17,7 @@ def stickerize(filename, tab_text):
     path = lift(path, work_dir + '/border_input'+ '/' + filename)
     path = border(path, work_dir + '/tab_input'+ '/' + filename, border_size=3, border_color=(0,0,0))
     path = border(path, work_dir + '/tab_input'+ '/' + filename)
-    path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename, tab_text=tab_text) # should I cartoonize the whole thing at the end, 
+    path = tab(path, work_dir + '/output'+ '/' + filename, tab_text=tab_text) # should I cartoonize the whole thing at the end, 
     print(path)
     return path
 
@@ -29,7 +29,7 @@ def _test_stickerize(filename, tab_text):
     path = 'workspace/lift_input/2b69d-temp.png'
     path = lift(path, work_dir + '/border_input'+ '/' + filename)
     path = border(path, work_dir + '/tab_input'+ '/' + filename, border_color=(173, 216, 230))
-    path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename, tab_text=tab_text) # should I cartoonize the whole thing at the end?
+    path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename, tab_text=tab_text)
     print(path)
     return path
 

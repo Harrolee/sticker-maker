@@ -1,35 +1,37 @@
+import numpy as np
 from PIL import Image, ImageFilter
 
-def _create_mask(image: Image, threshold):
-    mask = Image.new("L", image.size, 0)  # Start with a black mask
-    pixels = image.load()
-    mask_pixels = mask.load()
-    # Loop through all the pixels to create a mask where the person is
-    # TODO: iterate on this so that pixels are only replaced if a 3x3 kernel of applicable pixels is available
-    # kernel = [[]]
-    # copy the pixels into a numpy array and run a kernel over that
-    # data = numpy.asarray(image)
-    for y in range(image.size[1]):
-        for x in range(image.size[0]):
-            r, g, b, a = pixels[x, y]
-            if r > threshold or g > threshold or b > threshold:
-                mask_pixels[x, y] = 255  # Person area is white in the mask
+def _create_mask(image: Image, alpha_threshold: int = 5):
+    # Convert image to a NumPy array
+    image_array = np.array(image)
+
+    # Create a mask based on the alpha channel
+    alpha_channel = image_array[:, :, 3]  # Extract the alpha channel
+    mask_array = np.where(alpha_channel > alpha_threshold, 255, 0).astype(np.uint8)
+
+    # Convert mask array back to a Pillow image
+    mask = Image.fromarray(mask_array, mode="L")
     return mask
 
-def border(input_path, output_path, border_size = 15, border_color = (173, 216, 230)):
+def border(input_path, output_path, border_size=15, border_color=(173, 216, 230)):
     image = Image.open(input_path).convert("RGBA")
 
-    black_threshold = 33
-    mask = _create_mask(image, black_threshold)
-    # dilate mask
+    alpha_threshold = 5
+    mask = _create_mask(image, alpha_threshold)
+
+    # Dilate the mask for the border effect
     dilated_mask = mask.filter(ImageFilter.MaxFilter(size=border_size))
+
+    # Create a border image with the specified color
     border_image = Image.new("RGBA", image.size, border_color + (255,))
     border_inside = Image.composite(border_image, image, dilated_mask)
-    result = Image.composite(image, border_inside, mask)
 
+    # Composite the final result
+    result = Image.composite(image, border_inside, mask)
     result.save(output_path)
     return output_path
 
+
 if __name__ == "__main__":
     border_color = (173, 216, 230)
-    border("workspace/border_input/b69d-temp.png", "workspace/output/bordered-b69d-temp.png", border_color=border_color)
+    border("workspace/border_input/border_improve.png", "workspace/output/bordered-border_improve.png", border_color=border_color)
