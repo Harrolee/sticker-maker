@@ -1,29 +1,92 @@
 import uuid
 from io import BytesIO
 from fasthtml.common import *
-from fastsql import *
-from pathlib import Path
+from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
-from services.db import save_sticker
+from auth_config import AuthConfig
+from services.db import create_user, find_user_id_by_email, save_sticker
 from services.storefront import StorefrontProduct, publish_sticker
 from ui_components import accordion
 from make_sticker.main import stickerize
 
 
-app,rt = fast_app()
-# gridlink = Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css", type="text/css")
-# app = FastHTML(hdrs=(picolink, gridlink))
+auth_config = AuthConfig()
+google_client = GoogleAppClient(
+    client_id=auth_config.github_client_id,
+    client_secret=auth_config.github_client_secret
+)
+github_client = GitHubAppClient(
+    client_id=auth_config.github_client_id,
+    client_secret=auth_config.github_client_secret
+)
+auth_callback_path = "/auth_redirect"
 
-collections_path = Path('collections')
+def before(req, session):
+    auth = req.scope['auth'] = session.get('user_id', None)
+    if not auth: return RedirectResponse('/login', status_code=303)
+bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account', '/complete-login'])
 
-@rt('/collections/{id}')
-def get(): return collection(1)
+app,rt = fast_app(before=bware)
 
 
-def collection(id):
-    collection_path = collections_path / str(id)
-    return Div(*[Img(src=path) for path in collection_path.glob('*')])
+@app.get('/login')
+def login(request):
+    redir = redir_url(request,auth_callback_path)
+    return P(
+        Form(hx_get="complete-login", hx_target="#root", hx_encoding="multipart/form-data", hx_trigger="submit")
+             (
+                Input(type='text', id='email', placeholder="email here", accept='text/*'),
+                Button("Login", type="submit"), 
+             ),
+        Form(hx_get="create-account", hx_target="#root", hx_encoding="multipart/form-data", hx_trigger="submit")
+        (
+            Input(type='text', id='name', placeholder="name here", accept='text/*'),
+            Input(type='text', id='email', placeholder="email here", accept='text/*'),
+            Button("Create Account", type="submit"), 
+        ),
+        A('(Busted) Login with Github', href=github_client.login_link(redir)),
+        A('(Busted) Login with Google', href=google_client.login_link(redir)),
+        id="root"
+    )    
+
+@app.get('/create-account')
+def create_account(name: str, email: str, session):
+    user_id = create_user(name, email)
+    if user_id == None:
+        return P(f"Error creating account")
+    session['user_id'] = user_id
+    return JSONResponse(
+        content={},
+        status_code=200,
+        headers={"HX-Redirect": "/"}
+    )
+
+@app.get('/complete-login')
+def complete_login(email: str, session):
+    user_id = find_user_id_by_email(email)
+    if user_id == None:
+        return P(f"Could not find a user account with email {email}")
+    session['user_id'] = user_id
+    return JSONResponse(
+        content={},
+        status_code=200,
+        headers={"HX-Redirect": "/"}
+    )
+
+@app.get(auth_callback_path)
+def auth_redirect(code:str, request, session):
+    redir = redir_url(request, auth_callback_path, scheme='http')
+    user_info = github_client.retr_info(code, redir)
+    user_id = user_info[github_client.id_key] # get their ID
+    session['user_id'] = user_id # save ID in the session
+    # user_in_db(user_id)
+    return RedirectResponse('/', status_code=303)
+
+@app.get('/logout')
+def logout(session):
+    session.pop('user_id', None)
+    return RedirectResponse('/login', status_code=303)
 
 # Main page
 @rt('/')

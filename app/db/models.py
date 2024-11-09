@@ -13,6 +13,8 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     credits = Column(Integer, default=0)
+    github_id = Column(Integer, nullable=True)
+    google_id = Column(Integer, nullable=True)
 
     # Relationship to link to stickers and collections
     stickers = relationship('Sticker', back_populates='creator_user', cascade='all, delete-orphan')

@@ -1,5 +1,4 @@
 from random import randint
-import os
 import requests
 from dataclasses import dataclass
 

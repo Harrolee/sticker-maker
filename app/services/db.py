@@ -15,15 +15,64 @@ def db_connection():
         print(conn.execute(stmt).fetchall())
 
 
-def save_sticker(storefront_product_id, sticker_name, creator_id):
+def create_user(name, email):
+    with engine.connect() as conn:
+        with conn.begin():
+            result = conn.execute(
+                text("""
+                    INSERT INTO users (name, email, credits)
+                    VALUES (:name, :email, 0)
+                    RETURNING user_id
+                """),
+                {"name": name, "email": email}
+            )
+            user_id = result.scalar()  # Fetch the generated user_id
+    return user_id
+
+def all_users() -> int | None:
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT * FROM users"),
+        )
+        results = result.all()
+    return results
+
+def find_user_id_by_email(email) -> int | None:
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT user_id FROM users WHERE email = :email"),
+            {"email": email}
+        )
+        user_id = result.scalar_one_or_none()
+    return user_id
+
+
+def user_in_db(user_id):
+    # select user by user_id
+
+    # if not in db, add user to db
     with engine.connect() as conn:
         conn.execute(
             text("""
-                INSERT INTO stickers (storefront_product_id, name, sales, creator)
+                INSERT INTO users (name, email, credits)
                 VALUES (:storefront_product_id, :sticker_name, 0, :creator_id)
             """),
             {"storefront_product_id": storefront_product_id, "sticker_name": sticker_name, "creator_id": creator_id}
         )
+
+    # return true if the above works
+    return True
+
+def save_sticker(storefront_product_id, sticker_name, creator_id):
+    with engine.connect() as conn:
+        with conn.begin():
+            conn.execute(
+                text("""
+                    INSERT INTO stickers (storefront_product_id, name, sales, creator)
+                    VALUES (:storefront_product_id, :sticker_name, 0, :creator_id)
+                """),
+                {"storefront_product_id": storefront_product_id, "sticker_name": sticker_name, "creator_id": creator_id}
+            )
 
 if __name__ == "__main__":
     db_connection()
