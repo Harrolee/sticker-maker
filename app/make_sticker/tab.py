@@ -116,7 +116,8 @@ def write_text(draw, text, position, tab_size, font=None):
     
     # Center the text in the tab
     text_x = tab_x + (tab_width - text_width) // 2
-    text_y = tab_y + (tab_height - text_height) // 2
+    border_height_offset = -10 # we want the words a little on the border and a little on the tab
+    text_y = border_height_offset + tab_y + (tab_height - text_height) // 2
 
     # Draw text in white
     draw.text((text_x, text_y), text, fill='white', font=font)
@@ -147,18 +148,27 @@ def tab(input_path, output_path, tab_text: str):
     # 2. Find border and mark path
     result, (border_x, border_y), border_color = find_border(image)
 
-    # 3. Prepare to draw the tab
-    tab_width, tab_height = 80, 30
+    # 3. Prepare font and measure text dimensions
+    font = ImageFont.load_default()
+    text_bbox = font.getbbox(tab_text)
+    text_width = text_bbox[2] - text_bbox[0]
+    text_height = text_bbox[3] - text_bbox[1]
+    
+    # Add padding to the width to ensure text fits comfortably within the tab
+    padding = 10
+    tab_width = max(80, text_width + 2 * padding)  # Minimum width of 80
+    tab_height = max(15, text_height + padding)
+
+    # Calculate tab position centered at the border_x
     tab_position = (border_x - tab_width // 2, border_y)
 
     # 4. Draw the tab
     draw = ImageDraw.Draw(result)
     _draw_tab(draw, tab_position, (tab_width, tab_height), fill_color=border_color, rounded_side=Edge.BOTTOM, corner_radius=10)
 
-    # 5. Write text inside the tab
-    
-    font = ImageFont.load_default()
-    write_text(draw, tab_text, tab_position, (tab_width, tab_height), font)
+    # 5. Write text inside the tab, centered
+    text_position = (tab_position[0] + (tab_width - text_width) // 2, tab_position[1] + (tab_height - text_height) // 2)
+    draw.text(text_position, tab_text, font=font, fill="black")
 
     # 6. Clean up any stray pixels between the tab and border
     pixels_result = np.array(result)
