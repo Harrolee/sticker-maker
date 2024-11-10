@@ -1,11 +1,13 @@
+from contextlib import asynccontextmanager
 import uuid
 from io import BytesIO
+from dotenv import dotenv_values
 from fasthtml.common import *
 from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
 from auth_config import AuthConfig
-from services.db import create_user, find_user_info_by_email, save_sticker
+from services.db import DbClient
 from services.storefront import StorefrontProduct, publish_sticker
 from ui_components import accordion
 from make_sticker.main import stickerize
@@ -27,8 +29,16 @@ def before(req, session):
     if not auth: return RedirectResponse('/login', status_code=303)
 bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account', '/complete-login'])
 
-app,rt = fast_app(before=bware)
+@asynccontextmanager
+async def lifespan(app: FastHTML):
+    # Set up globally accessible singleton objects like db connection pool here
+    db_config = dotenv_values(dotenv_path="_db.env")
+    app.state.db_client = DbClient(db_config)
+    yield
+    # Clean up globally accessible singleton objects here
+    app.state.db_client.close()
 
+app,rt = fast_app(before=bware, lifespan=lifespan)
 
 @app.get('/login')
 def login(request):
