@@ -1,0 +1,39 @@
+name: Build and Push Container Image to Google Artifact Registry
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GAR_REPO_NAME: sticker-maker
+  IMAGE_NAME: sticker-maker
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCP_CREDENTIALS }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Authenticate Docker to Google Cloud Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build Docker image
+        run: |
+          IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
+          docker build -t "$IMAGE_NAME:latest" .
+
+      - name: Push container image to Google Cloud Artifact Registry
+        run: |
+          IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
+          docker push "$IMAGE_NAME:latest"
