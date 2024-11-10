@@ -7,7 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ /code/app
 
-ENV PYTHONPATH=/code:/code/app:${PYTHONPATH}
+# Since we're running from /code/app, we only need this path
+ENV PYTHONPATH=/code/app:${PYTHONPATH}
 
 WORKDIR /code/app
 
