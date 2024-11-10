@@ -3,25 +3,26 @@ import uuid
 from io import BytesIO
 from dotenv import dotenv_values
 from fasthtml.common import *
-from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
+# from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
-from auth_config import AuthConfig
+from make_sticker.config import StickerConfig
+# from auth_config import AuthConfig
 from services.db import DbClient
-from services.storefront import StorefrontProduct, publish_sticker
+from services.storefront import StickerPublisher, StorefrontProduct
 from ui_components import accordion
 from make_sticker.main import stickerize
 
 
-auth_config = AuthConfig()
-google_client = GoogleAppClient(
-    client_id=auth_config.github_client_id,
-    client_secret=auth_config.github_client_secret
-)
-github_client = GitHubAppClient(
-    client_id=auth_config.github_client_id,
-    client_secret=auth_config.github_client_secret
-)
+# auth_config = AuthConfig()
+# google_client = GoogleAppClient(
+#     client_id=auth_config.google_client_id,
+#     client_secret=auth_config.google_client_secret
+# )
+# github_client = GitHubAppClient(
+#     client_id=auth_config.github_client_id,
+#     client_secret=auth_config.github_client_secret
+# )
 auth_callback_path = "/auth_redirect"
 
 def before(req, session):
@@ -34,6 +35,7 @@ async def lifespan(app: FastHTML):
     # Set up globally accessible singleton objects like db connection pool here
     config = dotenv_values(dotenv_path=".env")
     app.state.db_client = DbClient(config)
+    app.state.config = StickerConfig(config)
     yield
     # Clean up globally accessible singleton objects here
     app.state.db_client.close()
@@ -42,7 +44,7 @@ app,rt = fast_app(before=bware, lifespan=lifespan)
 
 @app.get('/login')
 def login(request):
-    redir = redir_url(request,auth_callback_path)
+    # redir = redir_url(request,auth_callback_path)
     return P(
         Form(hx_get="complete-login", hx_target="#root", hx_encoding="multipart/form-data", hx_trigger="submit")
              (
@@ -55,14 +57,14 @@ def login(request):
             Input(type='text', id='email', placeholder="email here", accept='text/*'),
             Button("Create Account", type="submit"), 
         ),
-        A('(Busted) Login with Github', href=github_client.login_link(redir)),
-        A('(Busted) Login with Google', href=google_client.login_link(redir)),
+        # A('(Busted) Login with Github', href=github_client.login_link(redir)),
+        # A('(Busted) Login with Google', href=google_client.login_link(redir)),
         id="root"
     )    
 
 @app.get('/create-account')
-def create_account(name: str, email: str, session):
-    user_id = create_user(name, email)
+def create_account(name: str, email: str, session, app: FastHTML):
+    user_id = app.state.db_client.create_user(name, email)
     if user_id == None:
         return P(f"Error creating account")
     session['user_id'] = user_id
@@ -75,7 +77,7 @@ def create_account(name: str, email: str, session):
 
 @app.get('/complete-login')
 def complete_login(email: str, session):
-    user_id, name = find_user_info_by_email(email)
+    user_id, name = app.state.db_client.find_user_info_by_email(email)
     if user_id == None:
         return P(f"Could not find a user account with email {email}")
     session['user_id'] = user_id
@@ -86,14 +88,14 @@ def complete_login(email: str, session):
         headers={"HX-Redirect": "/"}
     )
 
-@app.get(auth_callback_path)
-def auth_redirect(code:str, request, session):
-    redir = redir_url(request, auth_callback_path, scheme='http')
-    user_info = github_client.retr_info(code, redir)
-    user_id = user_info[github_client.id_key] # get their ID
-    session['user_id'] = user_id # save ID in the session
-    # user_in_db(user_id)
-    return RedirectResponse('/', status_code=303)
+# @app.get(auth_callback_path)
+# def auth_redirect(code:str, request, session):
+#     redir = redir_url(request, auth_callback_path, scheme='http')
+#     user_info = github_client.retr_info(code, redir)
+#     user_id = user_info[github_client.id_key] # get their ID
+#     session['user_id'] = user_id # save ID in the session
+#     # user_in_db(user_id)
+#     return RedirectResponse('/', status_code=303)
 
 @app.get('/logout')
 def logout(session):
@@ -150,7 +152,7 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     fname = f"workspace/input/{basename}-temp.png"
     img.save(fname)
     
-    output_path = stickerize(f"{basename}-temp.png", sticker_name)
+    output_path = stickerize(f"{basename}-temp.png", sticker_name, app.state.config)
 
     session['sticker_url'] = output_path
     session['sticker_name'] = sticker_name
@@ -175,38 +177,39 @@ async def post(session):
         image_url=session['sticker_url'],
         price=400
     )
-    storefront_product_id, product_url = publish_sticker(storefront_product)
-    save_sticker(storefront_product_id, storefront_product.title, session['user_id'])
+    publisher = StickerPublisher(app.state.config)
+    storefront_product_id, product_url = publisher.publish_sticker(storefront_product)
+    app.state.db_client.save_sticker(storefront_product_id, storefront_product.title, session['user_id'])
     # should also save the image to s3
     return A(f"Here's a link to your sticker: {storefront_product.title}", href=product_url, id="narrator")
 
 
-def collection():
-    return Article(
-            H2('Step 3: Add to a collection'),
-            Form(hx_post="add-to-collection", hx_target="#main_content")(
-                Select(style="width: auto", id="attr1st")(
-                    Option("Nucklehead", value="Nucklehead", selected=True), Option("Fumblebees", value="Fumblebees")
-                ),
-                Button("Add", type="submit"), 
-            ),
-            Figure(
-                Img(src=img, alt="stickerized image"), 
-                id="displayed-image"), 
-            id="main_content"
-        )
+# def collection():
+#     return Article(
+#             H2('Step 3: Add to a collection'),
+#             Form(hx_post="add-to-collection", hx_target="#main_content")(
+#                 Select(style="width: auto", id="attr1st")(
+#                     Option("Nucklehead", value="Nucklehead", selected=True), Option("Fumblebees", value="Fumblebees")
+#                 ),
+#                 Button("Add", type="submit"), 
+#             ),
+#             Figure(
+#                 Img(src=img, alt="stickerized image"), 
+#                 id="displayed-image"), 
+#             id="main_content"
+#         )
 
-@rt('/add-to-collection')
-async def post(collection_name: str):
-    col = "flex flex-col"
-    bnset = "shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_4px_8px_rgba(0,0,0,0.5)]"
-    return Article(
-        accordion(id="uhhhh", question=collection_name, answer="put pictures here",
-                  question_cls="text-black s-body",
-        answer_cls="s-body text-black/80 col-span-full",
-        container_cls=f"{col} justify-between bg-soft-blue rounded-[1.25rem] {bnset}"),
-        id="main_content"
-    )
+# @rt('/add-to-collection')
+# async def post(collection_name: str):
+#     col = "flex flex-col"
+#     bnset = "shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_4px_8px_rgba(0,0,0,0.5)]"
+#     return Article(
+#         accordion(id="uhhhh", question=collection_name, answer="put pictures here",
+#                   question_cls="text-black s-body",
+#         answer_cls="s-body text-black/80 col-span-full",
+#         container_cls=f"{col} justify-between bg-soft-blue rounded-[1.25rem] {bnset}"),
+#         id="main_content"
+#     )
 
 
 

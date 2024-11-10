@@ -9,7 +9,7 @@ config = StickerConfig()
 
 work_dir = 'workspace'
 
-def stickerize(filename, tab_text):
+def stickerize(filename, tab_text, config):
 
     path = remove_background(work_dir + '/input' + '/' + filename, work_dir + '/cartoonize_input' + '/' + filename, config)
     path = cartoonize(path, work_dir + '/rm_background_input' + '/' + filename, config)

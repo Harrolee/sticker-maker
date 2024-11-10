@@ -3,8 +3,9 @@ from dotenv import dotenv_values
 
 
 class StickerConfig():
-    def __init__(self):
-        config = dotenv_values(dotenv_path="make_sticker/_sticker.env")
+    def __init__(self, config=None):
+        if config == None:
+            config = dotenv_values(dotenv_path="make_sticker/_sticker.env")
         self.workspace_dir = 'workspace'
 
         self.is_local = config["IS_LOCAL"]
