@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
-from make_sticker.config import StickerConfig
+from ..make_sticker.config import StickerConfig
 
 config = StickerConfig()
 
