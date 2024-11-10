@@ -57,7 +57,7 @@ class DbClient():
             return text(
                 f"""
                     INSERT INTO stickers (storefront_product_id, name, sales, creator)
-                    VALUES ({storefront_product_id}, {sticker_name}, 0, {creator_id})
+                    VALUES ({storefront_product_id}, '{sticker_name}', 0, {creator_id})
                 """
                 )
 
