@@ -24,12 +24,6 @@ class StickerConfig():
         self.sell_app_storefront_name = config["SELL_APP_STOREFRONT_NAME"]
         self.sell_app_token = config["SELL_APP_TOKEN"]
 
-        # db
-        self.db_user = config["DB_USER"]
-        self.db_name = config["DB_NAME"]
-        self.db_pass = config["DB_PASS"]
-        self.db_connection_string = f"postgresql+psycopg2://{self.db_user}:{self.db_pass}@localhost:5432/{self.db_name}"
-
         self.dirs = ['border_input', 'cartoonize_input','lift_input','rm_background_input','tab_input', 'output' ]
         self.init_dirs()
 
