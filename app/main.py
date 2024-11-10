@@ -1,3 +1,23 @@
+import os
+import sys
+
+def print_debug_info():
+    print("=== Python Environment Debug Info ===")
+    print(f"Current Working Directory: {os.getcwd()}")
+    print(f"Directory Contents: {os.listdir('.')}")
+    print(f"Parent Directory Contents: {os.listdir('..')}")
+    print("Python Path:")
+    for path in sys.path:
+        print(f"  - {path}")
+    print("Environment Variables:")
+    for key, value in os.environ.items():
+        if 'PYTHON' in key:
+            print(f"  {key}: {value}")
+    print("================================")
+
+# Add this at the top of your main.py, before the imports
+print_debug_info()
+
 from contextlib import asynccontextmanager
 import uuid
 from io import BytesIO
@@ -6,12 +26,12 @@ from fasthtml.common import *
 # from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
-from make_sticker.config import StickerConfig
+from .make_sticker.config import StickerConfig
 # from auth_config import AuthConfig
 from services.db import DbClient
-from services.storefront import StickerPublisher, StorefrontProduct
+from .services.storefront import StickerPublisher, StorefrontProduct
 from ui_components import accordion
-from make_sticker.main import stickerize
+from .make_sticker.main import stickerize
 
 
 # auth_config = AuthConfig()
