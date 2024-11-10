@@ -20,8 +20,8 @@ class DbClient():
                 print(f"Error closing Cloud SQL connector: {e}")
 
     def __init__(self, config):
-        config = dotenv_values(dotenv_path="_db.env")
-        self.is_local = 'false'# config["IS_LOCAL"]
+        config = dotenv_values(dotenv_path=".env")
+        self.is_local = config["IS_LOCAL"]
         if self.is_local == 'true':
             self.db_user = 'postgres'
             self.db_name = 'postgres'

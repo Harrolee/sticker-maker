@@ -3,7 +3,7 @@ from dotenv import dotenv_values
 
 class AuthConfig():
     def __init__(self):
-        secrets = dotenv_values(dotenv_path="_auth.env")
+        secrets = dotenv_values(dotenv_path=".env")
         try:
             with open("client_secret_376442012597-ehpirc0b6k472k140mntul76t8a0jgc0.apps.googleusercontent.com.json", 'r') as f:
                 auth_config = json.load(f)

@@ -4,7 +4,7 @@ from dotenv import dotenv_values
 
 class DbConfig():
     def __init__(self):
-        config = dotenv_values(dotenv_path="_db.env")
+        config = dotenv_values(dotenv_path=".env")
 
         if config["IS_LOCAL"] == 'true':
             self.db_user = 'postgres'

@@ -32,8 +32,8 @@ bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account'
 @asynccontextmanager
 async def lifespan(app: FastHTML):
     # Set up globally accessible singleton objects like db connection pool here
-    db_config = dotenv_values(dotenv_path="_db.env")
-    app.state.db_client = DbClient(db_config)
+    config = dotenv_values(dotenv_path=".env")
+    app.state.db_client = DbClient(config)
     yield
     # Clean up globally accessible singleton objects here
     app.state.db_client.close()
