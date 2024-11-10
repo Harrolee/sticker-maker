@@ -8,12 +8,18 @@ from fasthtml.common import *
 # from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
-from app.make_sticker.config import StickerConfig
+print(f'cwd is {os.getcwd()}')
+try:
+    from .make_sticker.config import StickerConfig
+    print('relative worked')
+except:
+    from make_sticker.config import StickerConfig
+    print('except worked')
 # from auth_config import AuthConfig
-from app.services.db import DbClient
-from app.services.storefront import StickerPublisher, StorefrontProduct
-from app.ui_components import accordion
-from app.make_sticker.main import stickerize
+from .services.db import DbClient
+from .services.storefront import StickerPublisher, StorefrontProduct
+from .ui_components import accordion
+from .make_sticker.main import stickerize
 
 
 # auth_config = AuthConfig()
