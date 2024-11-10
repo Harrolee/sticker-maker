@@ -1,4 +1,19 @@
 import os
+import sys
+
+print("Debug info:")
+print(f"Current working directory: {os.getcwd()}")
+print("Python path:")
+for path in sys.path:
+    print(f"  {path}")
+print("Directory contents:")
+print(os.listdir('.'))
+if os.path.exists('make_sticker'):
+    print("make_sticker contents:")
+    print(os.listdir('make_sticker'))
+else:
+    print("make_sticker directory not found!")
+
 from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
 import uuid

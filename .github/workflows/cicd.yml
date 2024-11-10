@@ -13,6 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,9 +35,17 @@ jobs:
       - name: Build Docker image
         run: |
           IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
-          docker build -t "$IMAGE_NAME:latest" .
+          docker build -t "$IMAGE_NAME:${{ github.sha }}" .
 
       - name: Push container image to Google Cloud Artifact Registry
         run: |
           IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
-          docker push "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:${{ github.sha }}"
+
+      - name: "Deploy to Cloud Run"
+
+        uses: "google-github-actions/deploy-cloudrun@33553064113a37d688aa6937bacbdc481580be17" # google-github-actions/deploy-cloudrun@v2
+        with:
+          service: $GAR_REPO_NAME
+          region: "${{ secrets.GCP_REGION }}"
+          image: "${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME:${{ github.sha }}"
