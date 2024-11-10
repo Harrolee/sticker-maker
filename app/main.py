@@ -1,23 +1,5 @@
 import os
-import sys
-
-def print_debug_info():
-    print("=== Python Environment Debug Info ===")
-    print(f"Current Working Directory: {os.getcwd()}")
-    print(f"Directory Contents: {os.listdir('.')}")
-    print(f"Parent Directory Contents: {os.listdir('..')}")
-    print("Python Path:")
-    for path in sys.path:
-        print(f"  - {path}")
-    print("Environment Variables:")
-    for key, value in os.environ.items():
-        if 'PYTHON' in key:
-            print(f"  {key}: {value}")
-    print("================================")
-
-# Add this at the top of your main.py, before the imports
-print_debug_info()
-
+from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
 import uuid
 from io import BytesIO
@@ -26,12 +8,12 @@ from fasthtml.common import *
 # from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
 
-from .make_sticker.config import StickerConfig
+from app.make_sticker.config import StickerConfig
 # from auth_config import AuthConfig
-from services.db import DbClient
-from .services.storefront import StickerPublisher, StorefrontProduct
-from ui_components import accordion
-from .make_sticker.main import stickerize
+from app.services.db import DbClient
+from app.services.storefront import StickerPublisher, StorefrontProduct
+from app.ui_components import accordion
+from app.make_sticker.main import stickerize
 
 
 # auth_config = AuthConfig()
@@ -53,7 +35,7 @@ bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account'
 @asynccontextmanager
 async def lifespan(app: FastHTML):
     # Set up globally accessible singleton objects like db connection pool here
-    config = dotenv_values(dotenv_path=".env")
+    config = dotenv_values(dotenv_path="app/.env")
     app.state.db_client = DbClient(config)
     app.state.config = StickerConfig(config)
     yield
@@ -131,61 +113,117 @@ def image_upload():
     return Article(
         H2('Step 1: Upload an image'),
         Form(hx_post="stickerize", hx_target="#main_content", 
-                hx_encoding="multipart/form-data", hx_trigger="submit")(
-            Input(type='text', id='sticker_name', accept='text/*'),
-            Input(type='file', id='image_input', accept='image/*'),
+             hx_encoding="multipart/form-data", 
+             hx_trigger="submit",
+             # Add loading state indicators
+             hx_indicator="#loading-spinner")(
+            Input(type='text', id='sticker_name', name='sticker_name', accept='text/*'),
+            Input(type='file', id='image_input', name='image_input', accept='image/*'),
             Button("Stickerize Image", type="submit"), 
+        ),
+        # Add loading spinner element (hidden by default)
+        Div(
+            Div("Processing image...", cls="spinner-text"),
+            cls="spinner-container",
+            id="loading-spinner",
+            style="display:none"
         ),
         id="main_content"
     )
 
-# @rt('/upload-image')
-# async def post(imageup: UploadFile):
-#     bytes = await imageup.read()
-#     img = Image.open(BytesIO(bytes))
-#     img.thumbnail((1024, 1024))
-#     img = ImageOps.exif_transpose(img) # Fix image rotation based on exif metadata
-#     fname = f"workspace/input/temp.png"
-#     img.save(fname)
-#     return Article(
-#             H2('Step 2: Name your sticker'),
-#             Form(hx_post="stickerize", hx_target="#main_content")(
-#                 Input(type='text', id='sticker_name', accept='text/*'),
-#                 Button("Stickerize Image", type="submit"), 
-#             ),
-#             Figure(
-#                 Img(src=fname, alt="preview image"), 
-#                 id="displayed-image"), 
-#             id="main_content"
-#         )
-
-# add the ability to stickerize it
-
-@rt('/stickerize')
-async def post(sticker_name: str, image_input: UploadFile, session):
-    # show a loading spinner until the process is complete
-    bytes = await image_input.read()
-    img = Image.open(BytesIO(bytes))
-    img.thumbnail((1024, 1024))
-    img = ImageOps.exif_transpose(img)
-    basename = str(uuid.uuid4())[:4]
-    fname = f"workspace/input/{basename}-temp.png"
-    img.save(fname)
-    
-    output_path = stickerize(f"{basename}-temp.png", sticker_name, app.state.config)
-
-    session['sticker_url'] = output_path
-    session['sticker_name'] = sticker_name
-    return Article(
+def processing_preview(basename: str, sticker_name: str):
+    """Shows a loading state while checking if processing is complete"""
+    output_path = f"app/workspace/output/{basename}-temp.png"
+    if os.path.exists(output_path):
+        return Article(
             H2('Step 2: Post to Storefront', id="narrator"),
             Form(hx_post="post-to-storefront", hx_target="#narrator")(
                 Button("Post", type="submit"), 
             ),
             Figure(
                 Img(src=output_path, alt="stickerized image"), 
-                id="displayed-image"), 
+                id="displayed-image"
+            ), 
             id="main_content"
         )
+    else:
+        return Article(
+            Div(
+                f"Creating {sticker_name}...",
+                id="processing-status",
+                hx_get=f"/process-status/{basename}?sticker_name={sticker_name}",
+                hx_trigger="every 10s",
+                hx_target="#main_content"
+            ),
+            id="main_content"
+        )
+
+@rt('/stickerize')
+async def post(sticker_name: str, image_input: UploadFile, session):
+    # Generate unique ID for this processing job
+    basename = str(uuid.uuid4())[:4]
+    bytes = await image_input.read()
+    img = Image.open(BytesIO(bytes))
+    img.thumbnail((1024, 1024))
+    img = ImageOps.exif_transpose(img)
+    fname = f"app/workspace/input/{basename}-temp.png"
+    img.save(fname)
+    # Start processing in background thread
+    process_image(basename, sticker_name, app.state.config, session)
+    
+    # Return immediate response with loading state
+    return processing_preview(basename, sticker_name)
+
+@rt('/process-status/{basename}')
+def get_process_status(basename: str, sticker_name: str):
+    """Endpoint to check processing status"""
+    return processing_preview(basename, sticker_name)
+
+@threaded
+def process_image(basename: str, sticker_name: str, config, session):
+    """Process image in background thread"""
+    output_path = stickerize(f"{basename}-temp.png", sticker_name, config)
+    session['sticker_url'] = output_path
+    session['sticker_name'] = sticker_name
+    return output_path
+
+# Add some CSS for the spinner
+# SPINNER_CSS = """
+# .spinner-container {
+#     text-align: center;
+#     padding: 20px;
+#     background: #f5f5f5;
+#     border-radius: 4px;
+#     margin: 10px 0;
+# }
+
+# .spinner-text {
+#     display: inline-block;
+#     padding-left: 20px;
+#     position: relative;
+# }
+
+# .spinner-text:before {
+#     content: '';
+#     position: absolute;
+#     left: 0;
+#     top: 50%;
+#     width: 12px;
+#     height: 12px;
+#     margin-top: -6px;
+#     border: 2px solid #333;
+#     border-top-color: transparent;
+#     border-radius: 50%;
+#     animation: spin 1s linear infinite;
+# }
+
+# @keyframes spin {
+#     to { transform: rotate(360deg); }
+# }
+# """
+
+# Add the CSS to your app's styles
+# app.add_style(SPINNER_CSS)
 
 
 @rt('/post-to-storefront')

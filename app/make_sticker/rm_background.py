@@ -1,4 +1,4 @@
-from make_sticker.config import StickerConfig
+from app.make_sticker.config import StickerConfig
 
 
 def remove_background(input_path, output_path, config: StickerConfig):

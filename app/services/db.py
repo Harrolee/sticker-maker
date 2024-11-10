@@ -2,7 +2,6 @@ from google.cloud.sql.connector import Connector, IPTypes
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql import text
-from dotenv import dotenv_values
 import pg8000
 
 class DbClient():
@@ -20,7 +19,6 @@ class DbClient():
                 print(f"Error closing Cloud SQL connector: {e}")
 
     def __init__(self, config):
-        config = dotenv_values(dotenv_path=".env")
         self.is_local = config["IS_LOCAL"]
         if self.is_local == 'true':
             self.db_user = 'postgres'

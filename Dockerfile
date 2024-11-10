@@ -10,4 +10,4 @@ COPY app/ /code/app
 WORKDIR /code/app
 
 EXPOSE 5001
-CMD ["python", "main.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]

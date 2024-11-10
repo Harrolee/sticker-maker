@@ -1,4 +1,4 @@
-from make_sticker.config import StickerConfig
+from app.make_sticker.config import StickerConfig
 
 def cartoonize(input_path, output_path, config: StickerConfig):
     if config.is_local == 'true':
@@ -39,7 +39,3 @@ def _sayak_cartoonizer(input_path, config: StickerConfig):
         input=input
     )
     return output[0]
-
-# if __name__ == "__main__":
-#     # export the REPLICATE_API_TOKEN for this to work
-#     _cartoonize_replicate("workspace/cartoonize_input/border_atWork_15.png", "workspace/output/cartoonized_border_atWork_15.png")

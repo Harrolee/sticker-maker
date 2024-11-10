@@ -1,13 +1,10 @@
-from make_sticker.rm_background import remove_background
-from make_sticker.cartoonize_image import cartoonize
-from make_sticker.lift import lift
-from make_sticker.border import border
-from make_sticker.tab import tab
-from make_sticker.config import StickerConfig
+from app.make_sticker.rm_background import remove_background
+from app.make_sticker.cartoonize_image import cartoonize
+from app.make_sticker.lift import lift
+from app.make_sticker.border import border
+from app.make_sticker.tab import tab
 
-config = StickerConfig()
-
-work_dir = 'workspace'
+work_dir = 'app/workspace'
 
 def stickerize(filename, tab_text, config):
 
@@ -20,19 +17,3 @@ def stickerize(filename, tab_text, config):
     path = tab(path, work_dir + '/output'+ '/' + filename, tab_text=tab_text) # should I cartoonize the whole thing at the end, 
     print(path)
     return path
-
-def _test_stickerize(filename, tab_text):
-    from lift import lift
-    from border import border
-    from tab import tab
-
-    path = 'workspace/lift_input/2b69d-temp.png'
-    path = lift(path, work_dir + '/border_input'+ '/' + filename)
-    path = border(path, work_dir + '/tab_input'+ '/' + filename, border_color=(173, 216, 230))
-    path = tab(path, work_dir + '/cartoonize_input'+ '/' + filename, tab_text=tab_text)
-    print(path)
-    return path
-
-
-if __name__ == "__main__":
-    _test_stickerize('2b69d-temp.png', 'do over')
