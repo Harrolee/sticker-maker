@@ -3,6 +3,7 @@ aiofiles==24.1.0
 aiohappyeyeballs==2.4.3
 aiohttp==3.10.10
 aiosignal==1.3.1
+alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.6.2.post1
 appnope==0.1.4
@@ -28,6 +29,7 @@ executing==2.1.0
 fastcore==1.7.19
 fastjsonschema==2.20.0
 fastlite==0.0.13
+fastsql==2.0.3
 filelock==3.16.1
 flatbuffers==24.3.25
 frozenlist==1.5.0
@@ -53,6 +55,7 @@ jupyter_core==5.7.2
 jupyterlab_pygments==0.3.0
 lazy_loader==0.4
 llvmlite==0.43.0
+Mako==1.3.6
 MarkupSafe==2.1.5
 matplotlib-inline==0.1.7
 mistune==3.0.2
@@ -82,6 +85,7 @@ propcache==0.2.0
 protobuf==5.28.2
 psutil==6.0.0
 psycopg==3.2.3
+psycopg2-binary==2.9.10
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pyasn1==0.6.1
@@ -137,5 +141,4 @@ webencodings==0.5.1
 websockets==13.1
 yarg==0.1.9
 yarl==1.16.0
-yoyo-migrations==9.0.0
 zipp==3.20.2
