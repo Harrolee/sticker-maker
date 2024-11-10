@@ -131,17 +131,16 @@ def image_upload():
         id="main_content"
     )
 
-def processing_preview(basename: str, sticker_name: str):
+def processing_preview(basename: str, sticker_name: str, sticker_url):
     """Shows a loading state while checking if processing is complete"""
-    output_path = f"app/workspace/output/{basename}-temp.png"
-    if os.path.exists(output_path):
+    if os.path.exists(sticker_url):
         return Article(
             H2('Step 2: Post to Storefront', id="narrator"),
             Form(hx_post="post-to-storefront", hx_target="#narrator")(
                 Button("Post", type="submit"), 
             ),
             Figure(
-                Img(src=output_path, alt="stickerized image"), 
+                Img(src=sticker_url, alt="stickerized image"), 
                 id="displayed-image"
             ), 
             id="main_content"
@@ -149,9 +148,9 @@ def processing_preview(basename: str, sticker_name: str):
     else:
         return Article(
             Div(
-                f"Creating {sticker_name}...",
+                f"Creating {sticker_name} sticker...",
                 id="processing-status",
-                hx_get=f"/process-status/{basename}?sticker_name={sticker_name}",
+                hx_get=f"/process-status/{basename}",
                 hx_trigger="every 10s",
                 hx_target="#main_content"
             ),
@@ -169,23 +168,22 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     fname = f"app/workspace/input/{basename}-temp.png"
     img.save(fname)
     # Start processing in background thread
-    process_image(basename, sticker_name, app.state.config, session)
-    
-    # Return immediate response with loading state
-    return processing_preview(basename, sticker_name)
-
-@rt('/process-status/{basename}')
-def get_process_status(basename: str, sticker_name: str):
-    """Endpoint to check processing status"""
-    return processing_preview(basename, sticker_name)
-
-@threaded
-def process_image(basename: str, sticker_name: str, config, session):
-    """Process image in background thread"""
-    output_path = stickerize(f"{basename}-temp.png", sticker_name, config)
+    process_image(basename, sticker_name, app.state.config)
+    output_path = f"app/workspace/output/{basename}-temp.png"
     session['sticker_url'] = output_path
     session['sticker_name'] = sticker_name
-    return output_path
+    # Return immediate response with loading state
+    return processing_preview(basename, sticker_name, output_path)
+
+@rt('/process-status/{basename}')
+def get_process_status(basename: str, session):
+    """Endpoint to check processing status"""
+    return processing_preview(basename, session['sticker_name'], session['sticker_url'])
+
+@threaded
+def process_image(basename: str, sticker_name: str, config):
+    """Process image in background thread"""
+    stickerize(f"{basename}-temp.png", sticker_name, config)
 
 # Add some CSS for the spinner
 # SPINNER_CSS = """

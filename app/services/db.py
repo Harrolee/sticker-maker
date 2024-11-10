@@ -98,7 +98,7 @@ class DbClient():
         try:
             with self.engine.connect() as conn:
                 with conn.begin():
-                    conn.execute(self.Queries.save_sticker(storefront_product_id, sticker_name, creator_id))
+                    conn.execute(self.queries.save_sticker(storefront_product_id, sticker_name, creator_id))
         except Exception as e:
                     print(f"Error saving sticker: {e}")
 
