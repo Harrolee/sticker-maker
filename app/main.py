@@ -37,13 +37,12 @@ try:
     from .make_sticker.config import StickerConfig
     print('relative worked')
 except:
-    from make_sticker.config import StickerConfig
-    print('except worked')
     try: 
+        from make_sticker.config import StickerConfig
+        print('except worked')
+    except:
         from app.make_sticker.config import StickerConfig
         print('absolute import worked')
-    except:
-        print('no luck, try again')
 # from auth_config import AuthConfig
 from .services.db import DbClient
 from .services.storefront import StickerPublisher, StorefrontProduct
