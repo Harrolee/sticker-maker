@@ -1,18 +1,26 @@
 import os
 import sys
 
-print("Debug info:")
-print(f"Current working directory: {os.getcwd()}")
-print("Python path:")
-for path in sys.path:
-    print(f"  {path}")
-print("Directory contents:")
-print(os.listdir('.'))
-if os.path.exists('make_sticker'):
-    print("make_sticker contents:")
-    print(os.listdir('make_sticker'))
-else:
-    print("make_sticker directory not found!")
+import os
+import sys
+
+print("=== Full Environment Debug ===")
+print("All environment variables:")
+for key, value in os.environ.items():
+    print(f"{key}: {value}")
+
+print("\nProcess info:")
+print(f"Process ID: {os.getpid()}")
+print(f"Process User ID: {os.getuid()}")
+print(f"Process Group ID: {os.getgid()}")
+
+print("\nFile permissions:")
+print("make_sticker directory permissions:")
+try:
+    print(os.stat('make_sticker'))
+    print("make_sticker is accessible")
+except Exception as e:
+    print(f"Error accessing make_sticker: {e}")
 
 from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
@@ -24,12 +32,18 @@ from fasthtml.common import *
 from PIL import Image, ImageOps
 
 print(f'cwd is {os.getcwd()}')
+
 try:
     from .make_sticker.config import StickerConfig
     print('relative worked')
 except:
     from make_sticker.config import StickerConfig
     print('except worked')
+    try: 
+        from app.make_sticker.config import StickerConfig
+        print('absolute import worked')
+    except:
+        print('no luck, try again')
 # from auth_config import AuthConfig
 from .services.db import DbClient
 from .services.storefront import StickerPublisher, StorefrontProduct
