@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - test-deploy
 
 env:
   GAR_REPO_NAME: sticker-maker

@@ -2,10 +2,11 @@ FROM python:3.12
 
 WORKDIR /code
 
-COPY app/requirements.txt /code/requirements.txt
+COPY test_dir/requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ /code/app
+COPY test_dir/test_app /code/test_app
+
 
 EXPOSE 5001
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "test_app.main:app", "--host", "0.0.0.0", "--port", "5001"]
