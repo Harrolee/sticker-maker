@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 from dotenv import dotenv_values
 from fasthtml.common import *
-from test_app.make_sticker.config import StickerConfig
-from test_app.services.db import DbClient
+from app.make_sticker.config import StickerConfig
+from app.services.db import DbClient
 
 @asynccontextmanager
 async def lifespan(app: FastHTML):
@@ -32,9 +32,7 @@ def get():
 
 @rt('/absolute-import')
 def get():
-    from test_app.make_sticker.config import StickerConfig
-    config = StickerConfig()
-    from test_app.module_one.rugged import log_hi
+    from app.module_one.rugged import log_hi
     return log_hi()
 
 serve()
