@@ -1,9 +1,6 @@
 import os
 import sys
 
-import os
-import sys
-
 print("=== Full Environment Debug ===")
 print("All environment variables:")
 for key, value in os.environ.items():
@@ -20,7 +17,11 @@ try:
     print(os.stat('make_sticker'))
     print("make_sticker is accessible")
 except Exception as e:
-    print(f"Error accessing make_sticker: {e}")
+    try:
+        print(os.stat('app/make_sticker'))
+        print("app/make_sticker is accessible")
+    except:
+        print(f"Error accessing make_sticker: {e}")
 
 from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
