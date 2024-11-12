@@ -1,27 +1,3 @@
-import os
-import sys
-
-import os
-import sys
-
-print("=== Full Environment Debug ===")
-print("All environment variables:")
-for key, value in os.environ.items():
-    print(f"{key}: {value}")
-
-print("\nProcess info:")
-print(f"Process ID: {os.getpid()}")
-print(f"Process User ID: {os.getuid()}")
-print(f"Process Group ID: {os.getgid()}")
-
-print("\nFile permissions:")
-print("make_sticker directory permissions:")
-try:
-    print(os.stat('make_sticker'))
-    print("make_sticker is accessible")
-except Exception as e:
-    print(f"Error accessing make_sticker: {e}")
-
 from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
 import uuid
@@ -34,20 +10,20 @@ from PIL import Image, ImageOps
 print(f'cwd is {os.getcwd()}')
 
 try:
-    from .make_sticker.config import StickerConfig
-    print('relative worked')
+    from fastapp.make_sticker.config import StickerConfig
+    print('absolute worked')
 except:
     try: 
         from make_sticker.config import StickerConfig
-        print('except worked')
+        print('local absolute worked')
     except:
-        from app.make_sticker.config import StickerConfig
-        print('absolute import worked')
+        from .make_sticker.config import StickerConfig
+        print('relative worked')
 # from auth_config import AuthConfig
-from .services.db import DbClient
-from .services.storefront import StickerPublisher, StorefrontProduct
-from .ui_components import accordion
-from .make_sticker.main import stickerize
+from fastapp.services.db import DbClient
+from fastapp.services.storefront import StickerPublisher, StorefrontProduct
+from fastapp.ui_components import accordion
+from fastapp.make_sticker.main import stickerize
 
 
 # auth_config = AuthConfig()

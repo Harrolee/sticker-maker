@@ -1,8 +1,8 @@
-from app.make_sticker.rm_background import remove_background
-from app.make_sticker.cartoonize_image import cartoonize
-from app.make_sticker.lift import lift
-from app.make_sticker.border import border
-from app.make_sticker.tab import tab
+from fastapp.make_sticker.rm_background import remove_background
+from fastapp.make_sticker.cartoonize_image import cartoonize
+from fastapp.make_sticker.lift import lift
+from fastapp.make_sticker.border import border
+from fastapp.make_sticker.tab import tab
 
 work_dir = 'app/workspace'
 

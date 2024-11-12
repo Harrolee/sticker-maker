@@ -1,4 +1,4 @@
-from app.make_sticker.config import StickerConfig
+from fastapp.make_sticker.config import StickerConfig
 
 def cartoonize(input_path, output_path, config: StickerConfig):
     if config.is_local == 'true':
