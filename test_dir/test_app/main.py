@@ -1,4 +1,16 @@
+from contextlib import asynccontextmanager
+from dotenv import dotenv_values
 from fasthtml.common import *
+from test_app.make_sticker.config import StickerConfig
+
+@asynccontextmanager
+async def lifespan(app: FastHTML):
+    # Set up globally accessible singleton objects like db connection pool here
+    config = dotenv_values(dotenv_path="app/.env")
+    app.state.config = StickerConfig(config)
+    yield
+    # Clean up globally accessible singleton objects here
+    app.state.db_client.close()
 
 app,rt = fast_app()
 
