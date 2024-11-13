@@ -175,11 +175,11 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     img = Image.open(BytesIO(bytes))
     img.thumbnail((1024, 1024))
     img = ImageOps.exif_transpose(img)
-    fname = f"app/workspace/input/{basename}-temp.png"
+    fname = f"fastapp/workspace/input/{basename}-temp.png"
     img.save(fname)
     # Start processing in background thread
     process_image(basename, sticker_name, app.state.config)
-    output_path = f"app/workspace/output/{basename}-temp.png"
+    output_path = f"fastapp/workspace/output/{basename}-temp.png"
     session['sticker_url'] = output_path
     session['sticker_name'] = sticker_name
     # Return immediate response with loading state

@@ -2,7 +2,7 @@ from pathlib import Path
 
 class StickerConfig():
     def __init__(self, config=None):
-        self.workspace_dir = 'app/workspace'
+        self.workspace_dir = 'fastapp/workspace'
 
         self.is_local = config["IS_LOCAL"]
 

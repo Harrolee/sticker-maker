@@ -4,7 +4,7 @@ from fastapp.make_sticker.lift import lift
 from fastapp.make_sticker.border import border
 from fastapp.make_sticker.tab import tab
 
-work_dir = 'app/workspace'
+work_dir = 'fastapp/workspace'
 
 def stickerize(filename, tab_text, config):
 
