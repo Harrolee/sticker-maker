@@ -21,7 +21,7 @@ class StickerConfig():
         self.sell_app_storefront_name = config["SELL_APP_STOREFRONT_NAME"]
         self.sell_app_token = config["SELL_APP_TOKEN"]
 
-        self.dirs = ['border_input', 'cartoonize_input','lift_input','rm_background_input','tab_input', 'output' ]
+        self.dirs = ['border_input', 'cartoonize_input','lift_input','rm_background_input','tab_input', 'output', 'input']
         self.init_dirs()
 
     def init_dirs(self):

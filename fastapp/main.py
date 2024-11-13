@@ -175,11 +175,11 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     img = Image.open(BytesIO(bytes))
     img.thumbnail((1024, 1024))
     img = ImageOps.exif_transpose(img)
-    fname = f"fastapp/workspace/input/{basename}-temp.png"
-    img.save(fname)
+    input_path = f"{app.state.config.workspace_dir}/input/{basename}.png"
+    img.save(input_path)
     # Start processing in background thread
     process_image(basename, sticker_name, app.state.config)
-    output_path = f"fastapp/workspace/output/{basename}-temp.png"
+    output_path = f"{app.state.config.workspace_dir}/output/{basename}.png"
     session['sticker_url'] = output_path
     session['sticker_name'] = sticker_name
     # Return immediate response with loading state
@@ -193,7 +193,7 @@ def get_process_status(basename: str, session):
 @threaded
 def process_image(basename: str, sticker_name: str, config):
     """Process image in background thread"""
-    stickerize(f"{basename}-temp.png", sticker_name, config)
+    stickerize(f"{basename}.png", sticker_name, config)
 
 # Add some CSS for the spinner
 # SPINNER_CSS = """

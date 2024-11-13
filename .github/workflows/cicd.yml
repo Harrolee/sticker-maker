@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: sticker-maker
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     permissions:
