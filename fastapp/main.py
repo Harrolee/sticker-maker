@@ -6,20 +6,8 @@ from dotenv import dotenv_values
 from fasthtml.common import *
 # from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
-
-print(f'cwd is {os.getcwd()}')
-
-try:
-    from fastapp.make_sticker.config import StickerConfig
-    print('absolute worked')
-except:
-    try: 
-        from make_sticker.config import StickerConfig
-        print('local absolute worked')
-    except:
-        from .make_sticker.config import StickerConfig
-        print('relative worked')
 # from auth_config import AuthConfig
+from fastapp.make_sticker.config import StickerConfig
 from fastapp.services.db import DbClient
 from fastapp.services.storefront import StickerPublisher, StorefrontProduct
 from fastapp.ui_components import accordion
@@ -45,7 +33,7 @@ bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account'
 @asynccontextmanager
 async def lifespan(app: FastHTML):
     # Set up globally accessible singleton objects like db connection pool here
-    config = dotenv_values(dotenv_path="app/.env")
+    config = dotenv_values(dotenv_path="fastapp/.env")
     app.state.db_client = DbClient(config)
     app.state.config = StickerConfig(config)
     yield
@@ -88,8 +76,8 @@ def create_account(name: str, email: str, session, app: FastHTML):
     )
 
 @app.get('/complete-login')
-def complete_login(email: str, session):
-    user_id, name = app.state.db_client.find_user_info_by_email(email)
+def complete_login(email: str, session, app: FastHTML):
+    user_id, name = app.state.db_client.find_user_by_email(email)
     if user_id == None:
         return P(f"Could not find a user account with email {email}")
     session['user_id'] = user_id

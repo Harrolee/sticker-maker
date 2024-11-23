@@ -34,7 +34,7 @@ class DbClient():
             self.instance_connection_name = config["INSTANCE_CONNECTION_NAME"]
             self.engine, self.connector = self.cloud_sql_connect_with_connector()
         self.queries = self.Queries()
-    
+
     class Queries():
         def create_user(self, name, email):
             return text(
@@ -44,14 +44,6 @@ class DbClient():
                     RETURNING user_id
                 """
             )
-        
-        def all_users(self):
-            return text(
-               "SELECT * FROM users"
-            )
-        
-        def find_user_by_email(self, email):
-            return text(f"SELECT user_id, name FROM users WHERE email = {email}"),
 
         def save_sticker(self, storefront_product_id, sticker_name, creator_id):
             return text(
@@ -79,16 +71,16 @@ class DbClient():
     def all_users(self) -> int | None:
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(self.queries.all_users())
+                result = conn.execute(text("SELECT * FROM users"))
                 results = result.all()
             return results
         except Exception as e:
                     print(f"Error getting users: {e}")
 
-    def find_user_info_by_email(self, email) -> tuple | None:
+    def find_user_by_email(self, email) -> tuple | None:
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(self.queries.find_user_info_by_email(email))
+                result = conn.execute(text("SELECT user_id, name FROM users WHERE email = :email"), {"email": email})
                 user_id, name = result.first()
             return user_id, name
         except Exception as e:
