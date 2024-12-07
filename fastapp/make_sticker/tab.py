@@ -40,7 +40,9 @@ def find_border(image, draw_path=False):
 
     if border_color is None:
         raise ValueError("Could not find border color")
-    
+
+    border_color = tuple(value.item() for value in border_color)
+
     return result, (x, y), border_color
 
 def _draw_tab(draw, position, tab_size, fill_color, rounded_side: Edge, corner_radius: 10):
@@ -122,6 +124,7 @@ def write_text(draw, text, position, tab_size, font=None):
     # Draw text in white
     draw.text((text_x, text_y), text, fill='white', font=font)
 
+# clean_up_pixels(pixels_result, tab_position, (tab_width, tab_height), border_color)
 def clean_up_pixels(pixels, tab_position, tab_size, border_color):
     """Clean up pixels between the tab and border by filling with the border color."""
     tab_x, tab_y = tab_position
@@ -142,13 +145,12 @@ def clean_up_pixels(pixels, tab_position, tab_size, border_color):
   - the border-find algorithm relies on there not being any gradient to the border
 """
 def tab(input_path, output_path, tab_text: str):
-    # 1. Load image
     image = load_image(input_path)
 
-    # 2. Find border and mark path
+    # Find border and mark path
     result, (border_x, border_y), border_color = find_border(image)
 
-    # 3. Prepare font and measure text dimensions
+    # Prepare font and measure text dimensions
     font = ImageFont.load_default()
     text_bbox = font.getbbox(tab_text)
     text_width = text_bbox[2] - text_bbox[0]
@@ -161,27 +163,22 @@ def tab(input_path, output_path, tab_text: str):
 
     # Calculate tab position centered at the border_x
     tab_position = (border_x - tab_width // 2, border_y)
-
-    # 4. Draw the tab
+    
+    # Draw the tab
     draw = ImageDraw.Draw(result)
     _draw_tab(draw, tab_position, (tab_width, tab_height), fill_color=border_color, rounded_side=Edge.BOTTOM, corner_radius=10)
 
-    # 5. Write text inside the tab, centered
+    # Write text inside the tab, centered
     text_position = (tab_position[0] + (tab_width - text_width) // 2, tab_position[1] + (tab_height - text_height) // 2)
     draw.text(text_position, tab_text, font=font, fill="black")
 
-    # 6. Clean up any stray pixels between the tab and border
-    pixels_result = np.array(result)
-    # clean_up_pixels(pixels_result, tab_position, (tab_width, tab_height), border_color)
-
-    # Convert back to image and save
-    final_result = Image.fromarray(pixels_result)
-    final_result.save(output_path)
+    result.save(output_path)
     return output_path
 
 # Example usage:
 if __name__ == '__main__':
-    tab("workspace/tab_input/border_atWork.png", "workspace/output/tabbed2.png", tab_text="lee apple")
+    print(tab("workspace/tab_input/border_atWork.png", "workspace/output/border_atWork_tabbed.png", tab_text="lee apple"))
+    print(tab("workspace/tab_input/broke_case.png", "workspace/output/broke_case_tabbed.png", tab_text="lee apple"))
 
 
 #     # Algorithm

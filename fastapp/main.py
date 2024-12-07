@@ -149,7 +149,7 @@ def processing_preview(basename: str, sticker_name: str, sticker_url):
                 f"Creating {sticker_name} sticker...",
                 id="processing-status",
                 hx_get=f"/process-status/{basename}",
-                hx_trigger="every 10s",
+                hx_trigger="every 3s",
                 hx_target="#main_content"
             ),
             id="main_content"

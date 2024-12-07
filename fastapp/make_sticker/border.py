@@ -1,44 +1,72 @@
+from enum import Enum
 import numpy as np
-from scipy.ndimage import gaussian_filter, binary_erosion, binary_dilation
-from PIL import Image, ImageFilter
+from scipy.ndimage import binary_dilation, gaussian_filter
+from PIL import Image
+import cv2  # Added for better edge smoothing
 
-def _create_mask(image: Image, alpha_threshold=5, erosion_iterations=1, dilation_iterations=1, smooth_edges_sigma=1.0):
-    # Step 1: Convert image to a binary mask based on the alpha channel
-    image_array = np.array(image)
-    alpha_channel = image_array[:, :, 3]
-    mask_array = np.where(alpha_channel > alpha_threshold, 1, 0).astype(np.uint8)  # Binary mask (0 or 1)
+class EdgeRoughness(Enum):
+    MEGACOARSE = 13
+    COARSE = 11
+    MID = 9
+    SMOOTH = 3
+      
 
-    # Step 2: Refine the mask with morphological operations
-    mask_array = binary_erosion(mask_array, iterations=erosion_iterations)
-    mask_array = binary_dilation(mask_array, iterations=dilation_iterations)
-
-    # Step 3: Smooth the edges of the mask
-    mask_array = gaussian_filter(mask_array.astype(float), sigma=smooth_edges_sigma)
-    mask_array = np.clip(mask_array * 255, 0, 255).astype(np.uint8)  # Convert back to 0-255 range
-
-    # Convert to PIL Image
-    refined_mask = Image.fromarray(mask_array, mode="L")
-    return refined_mask
-
-def border(input_path, output_path, border_size=15, border_color=(173, 216, 230)):
+def create_solid_border(input_path, output_path, roughness: EdgeRoughness, width=15, color=(0, 0, 0), ):
+    """Create a solid border with smooth edges but solid color."""
+    # Open and convert image to RGBA
     image = Image.open(input_path).convert("RGBA")
-
-    alpha_threshold = 5
-    mask = _create_mask(image, alpha_threshold)
-
-    # Dilate the mask for the border effect
-    dilated_mask = mask.filter(ImageFilter.MaxFilter(size=border_size))
-
-    # Create a border image with the specified color
-    border_image = Image.new("RGBA", image.size, border_color + (255,))
-    border_inside = Image.composite(border_image, image, dilated_mask)
-
-    # Composite the final result
-    result = Image.composite(image, border_inside, mask)
-    result.save(output_path)
+    image_array = np.array(image)
+    
+    # Get alpha channel
+    alpha_channel = image_array[:, :, 3]
+    
+    # Method 1: Multi-step smoothing
+    # First create binary mask with high threshold
+    binary_mask = (alpha_channel >= 250).astype(np.uint8)
+    
+    # Apply slight gaussian blur then re-threshold to smooth edges
+    # sigma = 0.9
+    # smoothed = gaussian_filter(binary_mask.astype(float), sigma=sigma)
+    # binary_mask = (smoothed > 0.5).astype(np.uint8)
+    
+# looked pretty good!
+    # Method 2: Morphological operations
+    kernel = np.ones((roughness.value,roughness.value), np.uint8)
+    binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
+    binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_OPEN, kernel)
+    
+    # Method 3: Distance transform approach
+    # dist = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 3)
+    # binary_mask = (dist > 0).astype(np.uint8)
+    
+    # Create dilated mask for border (using the smoothed base mask)
+    dilated_mask = binary_dilation(binary_mask, iterations=width)
+    
+    # Create border mask
+    border_mask = dilated_mask.astype(np.uint8) - binary_mask
+    
+    # Create result array
+    result = np.zeros_like(image_array)
+    
+    # Fill border areas with solid color
+    for i in range(3):
+        result[:, :, i] = np.where(border_mask == 1, color[i], 0)
+    result[:, :, 3] = border_mask * 255  # Solid alpha for border
+    
+    # Copy original image where it exists
+    mask_3d = np.stack([binary_mask] * 4, axis=-1)
+    result = np.where(mask_3d, image_array, result)
+    
+    # Convert back to PIL and save
+    result_image = Image.fromarray(result)
+    result_image.save(output_path)
     return output_path
 
-
 if __name__ == "__main__":
-    border_color = (173, 216, 230)
-    border("workspace/border_input/border_improve.png", "workspace/output/bordered-border_improve.png", border_color=border_color)
+    border_color = (0, 0, 0)  # Black border
+    create_solid_border(
+        "workspace/border_input/border_improve.png",
+        "workspace/output/bordered-border_improve.png",
+        width=15,
+        color=border_color
+    )

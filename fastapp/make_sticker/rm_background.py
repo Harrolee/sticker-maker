@@ -3,7 +3,7 @@ from fastapp.make_sticker.config import StickerConfig
 
 def remove_background(input_path, output_path, config: StickerConfig):
     if config.is_local == 'true':
-        return _gatis(input_path, output_path)
+        return "workspace/cartoonize_input/local_run.png"#_gatis(input_path, output_path)
     else:
         return _rm_background_replicate(input_path, output_path, config)
 
