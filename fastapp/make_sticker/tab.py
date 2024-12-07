@@ -1,194 +1,242 @@
-from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-from enum import Enum
+from PIL import Image, ImageDraw, ImageFont
+from scipy.ndimage import binary_dilation, gaussian_filter, binary_erosion
+import random
+import cv2
+from scipy import ndimage
 
-class Edge(Enum):
-    TOP = 'top'
-    BOTTOM = 'bottom'
-    LEFT = 'left'
-    RIGHT = 'right'
+def detect_border_angle(mask, point, radius=40):
+    """
+    Detect the angle of the border using a larger area and principal component analysis.
+    Uses multiple sampling radii to get a more stable angle estimate.
+    """
+    y, x = point
+    h, w = mask.shape
+    
+    # Collect border points at multiple scales
+    border_points = []
+    for r in [radius//2, radius, radius*1.5]:  # Sample at different scales
+        r = int(r)
+        y_min, y_max = max(0, y-r), min(h, y+r)
+        x_min, x_max = max(0, x-r), min(w, x+r)
+        
+        # Get the border region
+        region = mask[y_min:y_max, x_min:x_max]
+        edge = binary_dilation(region) ^ binary_erosion(region)
+        
+        # Get edge points
+        local_points = np.where(edge > 0)
+        for ly, lx in zip(local_points[0], local_points[1]):
+            border_points.append([lx + x_min - x, ly + y_min - y])  # Center around the point
+    
+    if len(border_points) < 3:
+        return 0
+    
+    # Convert to numpy array
+    points = np.array(border_points)
+    
+    # Calculate covariance matrix
+    mean = np.mean(points, axis=0)
+    centered_points = points - mean
+    cov = np.cov(centered_points.T)
+    
+    # Get principal direction
+    eigenvalues, eigenvectors = np.linalg.eigh(cov)
+    principal_direction = eigenvectors[:, 1]  # Largest eigenvalue's vector
+    
+    # Calculate angle
+    angle = np.degrees(np.arctan2(principal_direction[1], principal_direction[0]))
+    
+    # Make sure the angle is oriented outward from the mask
+    # Sample points slightly inside and outside the mask
+    test_dist = 5
+    in_point = (int(y - test_dist * np.sin(np.radians(angle))), 
+                int(x - test_dist * np.cos(np.radians(angle))))
+    out_point = (int(y + test_dist * np.sin(np.radians(angle))), 
+                int(x + test_dist * np.cos(np.radians(angle))))
+    
+    # Check if we need to flip the angle
+    if (0 <= in_point[0] < h and 0 <= in_point[1] < w and 
+        0 <= out_point[0] < h and 0 <= out_point[1] < w):
+        if mask[in_point] > mask[out_point]:
+            angle += 180
+    
+    # Normalize angle to -180 to 180 range
+    angle = (angle + 180) % 360 - 180
+    
+    return angle
 
-def load_image(input_path):
-    """Load and convert the image to RGBA format."""
+def create_bump_kernel(base_size=7, elongation=1.5):
+    """Create an elliptical kernel for bump-like growth."""
+    size = base_size + random.randint(-1, 1)
+    kernel = np.zeros((int(size * elongation), size))
+    center_y, center_x = kernel.shape[0] // 2, kernel.shape[1] // 2
+    y, x = np.ogrid[-center_y:kernel.shape[0]-center_y, -center_x:kernel.shape[1]-center_x]
+    
+    # Create elliptical mask
+    mask = (x*x)/(center_x*center_x) + (y*y)/(center_y*center_y) <= 1
+    kernel[mask] = 1
+    
+    # Add slight randomness to edges
+    kernel = gaussian_filter(kernel, sigma=0.3)
+    return kernel > 0.5
+
+def calculate_text_size(text, font):
+    """Calculate the required size for the text."""
+    bbox = font.getbbox(text)
+    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+def grow_bump_tab(mask, start_point, angle, text_width, text_height, margin=10):
+    """Grow a bump-like tab with controlled size based on text dimensions."""
+    h, w = mask.shape
+    result = mask.copy()
+    current = np.zeros_like(mask)
+    
+    # Calculate minimum tab dimensions needed for text
+    min_width = text_width + 2 * margin
+    min_height = text_height + 2 * margin
+    
+    # Initialize with small elliptical shape
+    y, x = start_point
+    kernel = create_bump_kernel(5, elongation=1.2)
+    y_indices, x_indices = np.where(kernel)
+    for dy, dx in zip(y_indices - kernel.shape[0]//2, x_indices - kernel.shape[1]//2):
+        ny, nx = y + dy, x + dx
+        if 0 <= ny < h and 0 <= nx < w:
+            current[ny, nx] = 1
+    
+    # Calculate growth direction
+    angle_rad = np.radians(angle)
+    direction = np.array([np.cos(angle_rad), np.sin(angle_rad)])
+    
+    # Grow the tab with controlled size
+    max_iterations = 8  # Reduced number of iterations for more controlled growth
+    for i in range(max_iterations):
+        # Create elongated kernel in growth direction
+        kernel = create_bump_kernel(7 + i // 2, elongation=1.5)
+        
+        # Apply dilation
+        new_growth = binary_dilation(current, kernel)
+        
+        # Add directional bias with reduced randomness
+        shift = (i + random.randint(-1, 1))  # Reduced random factor
+        dy = int(direction[1] * shift)
+        dx = int(direction[0] * shift)
+        
+        shifted = np.zeros_like(new_growth)
+        
+        # Calculate valid slices for shifting
+        src_slice_y = slice(max(0, -dy), min(h, h - dy))
+        src_slice_x = slice(max(0, -dx), min(w, w - dx))
+        dst_slice_y = slice(max(0, dy), min(h, h + dy))
+        dst_slice_x = slice(max(0, dx), min(w, w + dx))
+        
+        shifted[dst_slice_y, dst_slice_x] = new_growth[src_slice_y, src_slice_x]
+        
+        # Add minimal noise to edges
+        edge = binary_dilation(shifted) ^ shifted
+        noise = np.random.random(edge.shape) > 0.8
+        shifted = shifted | (edge & noise)
+        
+        current = shifted
+        result = result | current
+        
+        # Check if tab is big enough for text
+        tab_only = result & ~mask
+        tab_coords = np.where(tab_only)
+        if len(tab_coords[0]) > 0:
+            tab_height = max(tab_coords[0]) - min(tab_coords[0])
+            tab_width = max(tab_coords[1]) - min(tab_coords[1])
+            if tab_width >= min_width and tab_height >= min_height:
+                break
+    
+    return result
+
+def create_organic_tab(input_path, output_path, tab_text: str = "kmlmk"):
+    """Create an image with a bump-like tab."""
+    # Load image
     image = Image.open(input_path).convert('RGBA')
-    return image
-
-def find_border(image, draw_path=False):
-    """
-    Find the border color by traversing from the bottom center upwards.
-    Optionally draw a red path during traversal.
-    """
-    width, height = image.size
-    x = width // 2
-    y = height - 1
-    pixels = np.array(image)
-    border_color = None
-
-    # Create a draw object if we want to visualize the path
-    result = image.copy()
-    draw = ImageDraw.Draw(result) if draw_path else None
-
-    # Traverse upward to find the first non-transparent pixel
-    while y >= 0:
-        pixel = pixels[y, x]
-        if pixel[3] != 0:  # Check alpha channel
-            border_color = tuple(pixel)
-            break
-        if draw_path:
-            draw.point((x, y), fill=(255, 0, 0, 255))  # Draw red path
-        y -= 1
-
-    if border_color is None:
-        raise ValueError("Could not find border color")
-
-    border_color = tuple(value.item() for value in border_color)
-
-    return result, (x, y), border_color
-
-def _draw_tab(draw, position, tab_size, fill_color, rounded_side: Edge, corner_radius: 10):
-    """Draw a rectangle tab with rounded corners on only one specified side."""
-    tab_x, tab_y = position
-    tab_width, tab_height = tab_size
-
-    if rounded_side == Edge.TOP:
-        # Rounded corners on the top side only
-        draw.polygon([
-            (tab_x + corner_radius, tab_y),  # Start right of left rounded corner
-            (tab_x + tab_width - corner_radius, tab_y),  # End left of right rounded corner
-            (tab_x + tab_width, tab_y + corner_radius),  # Right rounded corner
-            (tab_x + tab_width, tab_y + tab_height),  # Bottom right
-            (tab_x, tab_y + tab_height),  # Bottom left
-            (tab_x, tab_y + corner_radius),  # Left rounded corner
-        ], fill=fill_color)
-        # Draw left and right top rounded corners
-        draw.pieslice([(tab_x, tab_y), (tab_x + 2*corner_radius, tab_y + 2*corner_radius)], 180, 270, fill=fill_color)
-        draw.pieslice([(tab_x + tab_width - 2*corner_radius, tab_y), (tab_x + tab_width, tab_y + 2*corner_radius)], 270, 360, fill=fill_color)
+    image_array = np.array(image)
     
-    elif rounded_side == Edge.BOTTOM:
-        # Rounded corners on the bottom side only
-        draw.polygon([
-            (tab_x, tab_y),  # Top left
-            (tab_x + tab_width, tab_y),  # Top right
-            (tab_x + tab_width, tab_y + tab_height - corner_radius),  # Bottom right before rounding
-            (tab_x + tab_width - corner_radius, tab_y + tab_height),  # Bottom right rounded corner
-            (tab_x + corner_radius, tab_y + tab_height),  # Bottom left rounded corner
-            (tab_x, tab_y + tab_height - corner_radius)  # Bottom left before rounding
-        ], fill=fill_color)
-        # Draw bottom left and right rounded corners
-        draw.pieslice([(tab_x, tab_y + tab_height - 2*corner_radius), (tab_x + 2*corner_radius, tab_y + tab_height)], 90, 180, fill=fill_color)
-        draw.pieslice([(tab_x + tab_width - 2*corner_radius, tab_y + tab_height - 2*corner_radius), (tab_x + tab_width, tab_y + tab_height)], 0, 90, fill=fill_color)
-
-    elif rounded_side == Edge.LEFT:
-        # Rounded corners on the left side only
-        draw.polygon([
-            (tab_x + corner_radius, tab_y),  # Top right of left rounded corner
-            (tab_x + tab_width, tab_y),  # Top right
-            (tab_x + tab_width, tab_y + tab_height),  # Bottom right
-            (tab_x + corner_radius, tab_y + tab_height),  # Bottom left of left rounded corner
-            (tab_x, tab_y + tab_height - corner_radius),  # Bottom left rounded corner
-            (tab_x, tab_y + corner_radius)  # Top left rounded corner
-        ], fill=fill_color)
-        # Draw top and bottom left rounded corners
-        draw.pieslice([(tab_x, tab_y), (tab_x + 2*corner_radius, tab_y + 2*corner_radius)], 180, 270, fill=fill_color)
-        draw.pieslice([(tab_x, tab_y + tab_height - 2*corner_radius), (tab_x + 2*corner_radius, tab_y + tab_height)], 90, 180, fill=fill_color)
-
-    elif rounded_side == Edge.RIGHT:
-        # Rounded corners on the right side only
-        draw.polygon([
-            (tab_x, tab_y),  # Top left
-            (tab_x + tab_width - corner_radius, tab_y),  # Right before top rounded corner
-            (tab_x + tab_width, tab_y + corner_radius),  # Top right rounded corner
-            (tab_x + tab_width, tab_y + tab_height - corner_radius),  # Bottom right rounded corner
-            (tab_x + tab_width - corner_radius, tab_y + tab_height),  # Bottom left of right rounded corner
-            (tab_x, tab_y + tab_height)  # Bottom left
-        ], fill=fill_color)
-        # Draw top and bottom right rounded corners
-        draw.pieslice([(tab_x + tab_width - 2*corner_radius, tab_y), (tab_x + tab_width, tab_y + 2*corner_radius)], 270, 360, fill=fill_color)
-        draw.pieslice([(tab_x + tab_width - 2*corner_radius, tab_y + tab_height - 2*corner_radius), (tab_x + tab_width, tab_y + tab_height)], 0, 90, fill=fill_color)
-
-def write_text(draw, text, position, tab_size, font=None):
-    """Write centered text within the specified tab area."""
-    tab_x, tab_y = position
-    tab_width, tab_height = tab_size
-
-    # Get text size and calculate position
-    text_bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
+    # Create mask from alpha channel
+    alpha_mask = (image_array[:, :, 3] > 0).astype(np.uint8)
     
-    # Center the text in the tab
-    text_x = tab_x + (tab_width - text_width) // 2
-    border_height_offset = -10 # we want the words a little on the border and a little on the tab
-    text_y = border_height_offset + tab_y + (tab_height - text_height) // 2
-
-    # Draw text in white
-    draw.text((text_x, text_y), text, fill='white', font=font)
-
-# clean_up_pixels(pixels_result, tab_position, (tab_width, tab_height), border_color)
-def clean_up_pixels(pixels, tab_position, tab_size, border_color):
-    """Clean up pixels between the tab and border by filling with the border color."""
-    tab_x, tab_y = tab_position
-    tab_width, tab_height = tab_size
-    border_color_array = np.array(border_color)
-
-    # Define and clean the tab area
-    cleanup_region = pixels[tab_y:tab_y + tab_height, tab_x:tab_x + tab_width]
-    mask = (cleanup_region[:, :, 3] != 0) & \
-           ~np.all(cleanup_region == border_color_array, axis=-1)
-    cleanup_region[mask] = border_color_array
-
-    # Update the original pixels with the cleaned-up region
-    pixels[tab_y:tab_y + tab_height, tab_x:tab_x + tab_width] = cleanup_region
-
-"""
-- must do immediately after creating a border
-  - the border-find algorithm relies on there not being any gradient to the border
-"""
-def tab(input_path, output_path, tab_text: str):
-    image = load_image(input_path)
-
-    # Find border and mark path
-    result, (border_x, border_y), border_color = find_border(image)
-
-    # Prepare font and measure text dimensions
+    edge = alpha_mask - binary_erosion(alpha_mask)
+    edge_points = list(zip(*np.where(edge > 0)))
+    
+    if not edge_points:
+        return None
+    
+    # Try to find a good starting point by sampling multiple points
+    best_point = None
+    most_stable_angle = float('inf')
+    
+    # Sample several random points
+    samples = random.sample(edge_points, min(10, len(edge_points)))
+    for point in samples:
+        # Check angle stability at different scales
+        angles = []
+        for radius in [30, 40, 50]:
+            angle = detect_border_angle(alpha_mask, point, radius)
+            angles.append(angle)
+        
+        # Calculate angle variance
+        angle_variance = np.var(angles)
+        if angle_variance < most_stable_angle:
+            most_stable_angle = angle_variance
+            best_point = point
+    
+    start_point = best_point or random.choice(edge_points)
+    border_angle = detect_border_angle(alpha_mask, start_point)
+    
+    # Calculate text size
     font = ImageFont.load_default()
-    text_bbox = font.getbbox(tab_text)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
+    text_width, text_height = calculate_text_size(tab_text, font)
     
-    # Add padding to the width to ensure text fits comfortably within the tab
-    padding = 10
-    tab_width = max(80, text_width + 2 * padding)  # Minimum width of 80
-    tab_height = max(15, text_height + padding)
-
-    # Calculate tab position centered at the border_x
-    tab_position = (border_x - tab_width // 2, border_y)
+    # Grow tab
+    tab_mask = grow_bump_tab(alpha_mask, start_point, border_angle, text_width, text_height)
+    new_tab_only = tab_mask & ~alpha_mask
     
-    # Draw the tab
-    draw = ImageDraw.Draw(result)
-    _draw_tab(draw, tab_position, (tab_width, tab_height), fill_color=border_color, rounded_side=Edge.BOTTOM, corner_radius=10)
-
-    # Write text inside the tab, centered
-    text_position = (tab_position[0] + (tab_width - text_width) // 2, tab_position[1] + (tab_height - text_height) // 2)
-    draw.text(text_position, tab_text, font=font, fill="black")
-
+    # Create result image
+    result = image.copy()
+    result_array = np.array(result)
+    
+    # Set tab color (light blue with higher opacity)
+    tab_color = np.array([173, 216, 230, 230], dtype=np.uint8)  # Increased opacity
+    
+    # Apply tab color
+    for c in range(4):
+        result_array[:, :, c] = np.where(new_tab_only, tab_color[c], result_array[:, :, c])
+    
+    # Convert back to PIL Image
+    result = Image.fromarray(result_array)
+    
+    # Add text
+    if tab_text:
+        draw = ImageDraw.Draw(result)
+        
+        # Calculate center of tab
+        tab_points = np.where(new_tab_only)
+        if len(tab_points[0]) > 0:
+            text_y = int(np.mean(tab_points[0]))
+            text_x = int(np.mean(tab_points[1]))
+            
+            # Create text image with padding
+            padding = 10
+            text_img = Image.new('RGBA', (text_width + padding*2, text_height + padding*2), (0, 0, 0, 0))
+            text_draw = ImageDraw.Draw(text_img)
+            text_draw.text((padding, padding), tab_text, fill='white', font=font)
+            
+            # When rotating text, use the negative of the border angle
+            # This will align text more naturally with the overall border
+            rotated_text = text_img.rotate(-border_angle, expand=True, resample=Image.BICUBIC)
+    
+            # Position text in center of tab
+            paste_x = text_x - rotated_text.width // 2
+            paste_y = text_y - rotated_text.height // 2
+            
+            # Paste text
+            result.paste(rotated_text, (paste_x, paste_y), rotated_text)
+    
     result.save(output_path)
     return output_path
-
-# Example usage:
-if __name__ == '__main__':
-    print(tab("workspace/tab_input/border_atWork.png", "workspace/output/border_atWork_tabbed.png", tab_text="lee apple"))
-    print(tab("workspace/tab_input/broke_case.png", "workspace/output/broke_case_tabbed.png", tab_text="lee apple"))
-
-
-#     # Algorithm
-#     # 1. find a tab placement point
-#     # 1.1 start in center bottom 
-#     # 1.2 walk toward center until you find a pixel that is not empty
-#     # 1.2.1 note: the first pixel that is not empty is beginning of the border
-#     # 2. create a rounded tab in the color of the pixel that you found
-#     # 3. write "tab_here" inside of that rounded tab
-#     # 4. save the tab onto the image  
-#     # 5. cleanup
-#     # 5.1 check for any pixels between the newly created tab and the border that are not the border's color
-#     # 5.1 replace those pixels with the border's color
