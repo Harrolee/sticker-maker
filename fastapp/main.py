@@ -33,8 +33,8 @@ bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account'
 @asynccontextmanager
 async def lifespan(app: FastHTML):
     # Set up globally accessible singleton objects like db connection pool here
-    config = dotenv_values(dotenv_path="fastapp/.env")
-    print(f'config values are: {config}')
+    dotenv_path = "fastapp/.env" if os.path.exists("fastapp/.env") else "/code/env/.env"
+    config = dotenv_values(dotenv_path=dotenv_path)
     app.state.db_client = DbClient(config)
     app.state.config = StickerConfig(config)
     yield
