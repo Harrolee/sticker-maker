@@ -33,17 +33,15 @@ jobs:
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
       - name: Build Docker image
-        run: |
-          IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
-          docker build -t "$IMAGE_NAME:${{ github.sha }}" .
-
-      - name: Push container image to Google Cloud Artifact Registry
-        run: |
-          IMAGE_NAME="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$GAR_REPO_NAME/$IMAGE_NAME"
-          docker push "$IMAGE_NAME:${{ github.sha }}"
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: "Deploy to Cloud Run"
-
         uses: "google-github-actions/deploy-cloudrun@33553064113a37d688aa6937bacbdc481580be17" # google-github-actions/deploy-cloudrun@v2
         with:
           service: sticker-maker
