@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  GAR_REPO_NAME: sticker-maker
+  GAR_REPO_NAME: sticker-maker-repo
   IMAGE_NAME: sticker-maker
 
 jobs:
@@ -48,4 +48,4 @@ jobs:
         with:
           service: sticker-maker
           region: "${{ secrets.GCP_REGION }}"
-          image: "${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/sticker-maker/sticker-maker:${{ github.sha }}"
+          image: "${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/sticker-maker-repo/sticker-maker:${{ github.sha }}"

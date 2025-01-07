@@ -5,6 +5,7 @@ client_secret*
 .sesskey
 *.env
 venv
+cf_env
 __pycache__
 .DS_Store
 input/*
@@ -14,3 +15,7 @@ output/*
 backend/workspace/*
 *.png
 *.jpg
+.envfastapp/db/db.env
+fastapp/make_sticker/sticker.env
+fastapp/make_sticker/.env
+service-account-key.json
