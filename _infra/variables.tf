@@ -102,3 +102,29 @@ variable "smtp_port" {
   type        = string
   default     = "587"
 }
+
+variable "replicate_cartoonize_model_hash" {
+  description = "Model hash for Replicate.ai cartoonize model"
+  type        = string
+}
+
+variable "replicate_rm_background_model_hash" {
+  description = "Model hash for Replicate.ai background removal model"
+  type        = string
+}
+
+variable "sell_app_storefront_name" {
+  description = "Name of the Sell App storefront"
+  type        = string
+}
+
+variable "mailjet_api_key_public" {
+  description = "Public API key for Mailjet"
+  type        = string
+}
+
+variable "mailjet_api_key_private" {
+  description = "Private API key for Mailjet"
+  type        = string
+  sensitive   = true
+}

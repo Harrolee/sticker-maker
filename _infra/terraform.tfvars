@@ -20,3 +20,10 @@ allowed_cloud_run_invokers = [
   "serviceAccount:your-service-account@your-project.iam.gserviceaccount.com",
   "user:halzinnia@gmail.com"
 ]
+
+replicate_cartoonize_model_hash = "your-cartoonize-model-hash"
+replicate_rm_background_model_hash = "your-rm-background-model-hash"
+sell_app_storefront_name = "your-storefront-name"
+
+mailjet_api_key_public = "your-mailjet-public-key"
+mailjet_api_key_private = "your-mailjet-private-key"

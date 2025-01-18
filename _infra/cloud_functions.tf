@@ -47,17 +47,29 @@ resource "google_cloudfunctions2_function" "webhook_function" {
     available_memory     = "256M"
     timeout_seconds     = 300
     service_account_email = google_service_account.function_sa.email
+    
     environment_variables = {
       LOG_EXECUTION_ID           = "true"
       INSTANCE_CONNECTION_NAME   = "${var.project_id}:${var.gcp_region}:sticker-maker"
       DB_USER                   = "postgres"
       DB_NAME                   = "postgres"
-      GOOGLE_FUNCTION_SOURCE    = "process_sale.py" 
+      IS_LOCAL                  = "false"
+      MJ_APIKEY_PUBLIC         = var.mailjet_api_key_public
+      SMTP_HOST                = var.smtp_host
+      SMTP_PORT                = var.smtp_port
     }
+
+    # Sensitive environment variables using secrets
     secret_environment_variables {
       key        = "DB_PASS"
       project_id = var.project_id
-      secret     = "DB_PASS"
+      secret     = "db-password"
+      version    = "latest"
+    }
+    secret_environment_variables {
+      key        = "MJ_APIKEY_PRIVATE"
+      project_id = var.project_id
+      secret     = "mailjet-api-key-private"
       version    = "latest"
     }
   }
@@ -69,4 +81,11 @@ resource "google_cloudfunctions2_function_iam_member" "webhook_invoker" {
   cloud_function = google_cloudfunctions2_function.webhook_function.name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
+}
+
+# Add Secret Manager access for the Cloud Function service account
+resource "google_project_iam_member" "function_secrets" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.function_sa.email}"
 } 

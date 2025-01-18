@@ -23,7 +23,7 @@ resource "google_cloud_run_service" "cloudrun_service" {
     spec {
       container_concurrency = 80
       timeout_seconds      = 300
-      service_account_name = "${var.project_number}-compute@developer.gserviceaccount.com"
+      service_account_name = google_service_account.cloudrun_sa.email
 
       containers {
         image = var.cloud_run_image
@@ -40,9 +40,73 @@ resource "google_cloud_run_service" "cloudrun_service" {
           }
         }
 
-        volume_mounts {
-          name       = "app_env"
-          mount_path = "/code/env"
+        env {
+          name  = "SELL_APP_TOKEN"
+          value = var.sell_app_token
+        }
+        env {
+          name  = "REPLICATE_API_TOKEN"
+          value = var.replicate_api_token
+        }
+        env {
+          name  = "REPLICATE_MODEL_HASH"
+          value = var.replicate_model_hash
+        }
+        env {
+          name  = "IS_LOCAL"
+          value = "false"
+        }
+        env {
+          name  = "SENDER_EMAIL"
+          value = var.sender_email
+        }
+        env {
+          name  = "SUPPLIER_EMAIL"
+          value = var.supplier_email
+        }
+        env {
+          name  = "SUPPORT_EMAIL"
+          value = var.support_email
+        }
+        env {
+          name  = "INSTANCE_CONNECTION_NAME"
+          value = "${var.project_id}:${var.gcp_region}:sticker-maker-db"
+        }
+        env {
+          name  = "DB_USER"
+          value = "postgres"
+        }
+        env {
+          name  = "DB_NAME"
+          value = "postgres"
+        }
+        env {
+          name  = "SMTP_HOST"
+          value = var.smtp_host
+        }
+        env {
+          name  = "SMTP_PORT"
+          value = var.smtp_port
+        }
+
+        # Sensitive environment variables using secrets
+        env {
+          name = "DB_PASS"
+          value_from {
+            secret_key_ref {
+              name = "db-password"
+              key  = "latest"
+            }
+          }
+        }
+        env {
+          name = "SENDER_EMAIL_PASSWORD"
+          value_from {
+            secret_key_ref {
+              name = "sender-email-password"
+              key  = "latest"
+            }
+          }
         }
 
         startup_probe {
@@ -53,16 +117,18 @@ resource "google_cloud_run_service" "cloudrun_service" {
           period_seconds     = 240
           failure_threshold = 1
         }
-      }
 
-      volumes {
-        name = "app_env"
-        secret {
-          secret_name = "app_env"
-          items {
-            key  = "latest"
-            path = ".env"
-          }
+        env {
+          name  = "REPLICATE_CARTOONIZE_MODEL_HASH"
+          value = var.replicate_cartoonize_model_hash
+        }
+        env {
+          name  = "REPLICATE_RM_BACKGROUND_MODEL_HASH"
+          value = var.replicate_rm_background_model_hash
+        }
+        env {
+          name  = "SELL_APP_STOREFRONT_NAME"
+          value = var.sell_app_storefront_name
         }
       }
     }
@@ -95,5 +161,11 @@ resource "google_project_iam_member" "cloudrun_sql" {
 resource "google_project_iam_member" "cloudrun_storage" {
   project = var.project_id
   role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.cloudrun_sa.email}"
+}
+
+resource "google_project_iam_member" "cloudrun_secrets" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.cloudrun_sa.email}"
 } 
