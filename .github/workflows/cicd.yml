@@ -44,6 +44,6 @@ jobs:
       - name: "Deploy to Cloud Run"
         uses: "google-github-actions/deploy-cloudrun@33553064113a37d688aa6937bacbdc481580be17" # google-github-actions/deploy-cloudrun@v2
         with:
-          service: sticker-maker
+          service: sticker-maker-fasthtml
           region: "${{ secrets.GCP_REGION }}"
           image: "${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/sticker-maker-repo/sticker-maker:${{ github.sha }}"

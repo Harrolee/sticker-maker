@@ -16,9 +16,8 @@ class User(Base):
     github_id = Column(Integer, nullable=True)
     google_id = Column(Integer, nullable=True)
 
-    # Relationship to link to stickers and collections
+    # Remove the collections relationship for now
     stickers = relationship('Sticker', back_populates='creator_user', cascade='all, delete-orphan')
-    collections = relationship('Collection', back_populates='creator_user', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"id: {self.user_id}, name: {self.name}"
@@ -38,3 +37,15 @@ class Sticker(Base):
 
     def __repr__(self):
         return f"id: {self.sticker_id}, name: {self.name}"
+
+# class Collection(Base):
+#     __tablename__ = 'collections'
+    
+#     collection_id = Column(Integer, primary_key=True)
+#     name = Column(String)
+#     user_id = Column(Integer, ForeignKey('users.user_id'))
+    
+#     # Add the back_populates to complete the bidirectional relationship
+#     creator_user = relationship('User', back_populates='collections')
+
+    # Add other fields as needed
