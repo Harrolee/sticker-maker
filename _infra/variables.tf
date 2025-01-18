@@ -128,3 +128,9 @@ variable "mailjet_api_key_private" {
   type        = string
   sensitive   = true
 }
+
+variable "is_local" {
+  description = "Flag to indicate if running in local environment"
+  type        = string
+  default     = "false"
+}

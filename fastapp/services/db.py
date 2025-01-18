@@ -1,57 +1,79 @@
-from google.cloud.sql.connector import Connector, IPTypes
-from sqlalchemy import create_engine
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.sql import text
+from google.cloud.sql.connector import Connector
+from sqlalchemy import create_engine, text
 import pg8000
+import os
 
 class DbClient():
+    def __init__(self):
+        self.is_local = os.environ.get('IS_LOCAL', 'false').lower() == 'true'
+        self._setup_connection()
+        self.queries = self.Queries()
+
+    def _setup_connection(self):
+        if self.is_local:
+            self.db_user = 'postgres'
+            self.db_name = 'postgres'
+            self.db_pass = 'postgres'
+            self.db_host = 'localhost'
+            self.engine = create_engine(
+                f"postgresql+psycopg2://{self.db_user}:{self.db_pass}@{self.db_host}:5432/{self.db_name}"
+            )
+        else:
+            self.db_user = os.environ.get('DB_USER')
+            self.db_name = os.environ.get('DB_NAME')
+            self.db_pass = os.environ.get('DB_PASS')
+            self.instance_connection_name = os.environ.get('INSTANCE_CONNECTION_NAME')
+            self.engine, self.connector = self._cloud_sql_connect()
+
+    def _cloud_sql_connect(self):
+        connector = Connector(refresh_strategy="lazy")
+        
+        def getconn():
+            return connector.connect(
+                self.instance_connection_name,
+                "pg8000",
+                user=self.db_user,
+                password=self.db_pass,
+                db=self.db_name,
+            )
+
+        engine = create_engine("postgresql+pg8000://", creator=getconn)
+        return engine, connector
+
+    def close(self):
+        if hasattr(self, 'connector'):
+            try:
+                self.connector.close()
+            except Exception as e:
+                print(f"Error closing Cloud SQL connector: {e}")
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def close(self):
-        if hasattr(self, 'connector') and self.connector:
-            try:
-                self.connector.close()
-            except Exception as e:
-                print(f"Error closing Cloud SQL connector: {e}")
-
-    def __init__(self, config):
-        self.is_local = config["IS_LOCAL"]
-        if self.is_local == 'true':
-            self.db_user = 'postgres'
-            self.db_name = 'postgres'
-            self.db_pass = 'postgres'
-            self.db_host = 'localhost'
-            self.db_connection_string = f"postgresql+psycopg2://{self.db_user}:{self.db_pass}@{self.db_host}:5432/{self.db_name}"
-            self.engine = create_engine(self.db_connection_string)
-        else:
-            self.db_user = config["DB_USER"]
-            self.db_name = config["DB_NAME"]
-            self.db_pass = config["DB_PASS"]
-            self.instance_connection_name = config["INSTANCE_CONNECTION_NAME"]
-            self.engine, self.connector = self.cloud_sql_connect_with_connector()
-        self.queries = self.Queries()
-
     class Queries():
         def create_user(self, name, email):
             return text(
-               f"""
-                    INSERT INTO users (name, email, credits)
-                    VALUES ('{name}', '{email}', 0)
-                    RETURNING user_id
                 """
-            )
+                INSERT INTO users (name, email, credits)
+                VALUES (:name, :email, 0)
+                RETURNING user_id
+                """
+            ).bindparams(name=name, email=email)
 
         def save_sticker(self, storefront_product_id, sticker_name, creator_id):
             return text(
-                f"""
-                    INSERT INTO stickers (storefront_product_id, name, sales, creator)
-                    VALUES ({storefront_product_id}, '{sticker_name}', 0, {creator_id})
                 """
-                )
+                INSERT INTO stickers (storefront_product_id, name, sales, creator)
+                VALUES (:product_id, :name, 0, :creator_id)
+                """
+            ).bindparams(
+                product_id=storefront_product_id,
+                name=sticker_name,
+                creator_id=creator_id
+            )
 
     def db_connection(self):
         with self.engine.connect() as conn:
@@ -93,32 +115,6 @@ class DbClient():
                     conn.execute(self.queries.save_sticker(storefront_product_id, sticker_name, creator_id))
         except Exception as e:
                     print(f"Error saving sticker: {e}")
-
-    def cloud_sql_connect_with_connector(self) -> Engine:
-        """
-        Initializes a connection pool for a Cloud SQL instance of Postgres.
-
-        Uses the Cloud SQL Python Connector package.
-        """
-
-        # initialize Cloud SQL Python Connector object
-        connector = Connector(refresh_strategy="lazy")
-
-        def getconn() -> pg8000.dbapi.Connection:
-            conn: pg8000.dbapi.Connection = connector.connect(
-                self.instance_connection_name,
-                "pg8000",
-                user=self.db_user,
-                password=self.db_pass,
-                db=self.db_name,
-            )
-            return conn
-
-        pool = create_engine(
-            "postgresql+pg8000://",
-            creator=getconn,
-        )
-        return pool, connector
 
 if __name__ == "__main__":
     with DbClient() as client:

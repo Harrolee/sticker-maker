@@ -53,7 +53,7 @@ resource "google_cloudfunctions2_function" "webhook_function" {
       INSTANCE_CONNECTION_NAME   = "${var.project_id}:${var.gcp_region}:sticker-maker"
       DB_USER                   = "postgres"
       DB_NAME                   = "postgres"
-      IS_LOCAL                  = "false"
+      IS_LOCAL                  = var.is_local
       MJ_APIKEY_PUBLIC         = var.mailjet_api_key_public
       SMTP_HOST                = var.smtp_host
       SMTP_PORT                = var.smtp_port

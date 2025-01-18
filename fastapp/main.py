@@ -12,6 +12,11 @@ from fastapp.services.db import DbClient
 from fastapp.services.storefront import StickerPublisher, StorefrontProduct
 from fastapp.ui_components import accordion
 from fastapp.make_sticker.main import stickerize
+from dataclasses import dataclass
+from fastapp.db.models import Sticker, User
+from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, select
 
 
 # auth_config = AuthConfig()
@@ -32,13 +37,9 @@ bware = Beforeware(before, skip=['/login', auth_callback_path, '/create-account'
 
 @asynccontextmanager
 async def lifespan(app: FastHTML):
-    # Set up globally accessible singleton objects like db connection pool here
-    dotenv_path = "fastapp/.env" if os.path.exists("fastapp/.env") else "/code/env/.env"
-    config = dotenv_values(dotenv_path=dotenv_path)
-    app.state.db_client = DbClient(config)
-    app.state.config = StickerConfig(config)
+    app.state.db_client = DbClient()
+    app.state.config = StickerConfig()
     yield
-    # Clean up globally accessible singleton objects here
     app.state.db_client.close()
 
 app,rt = fast_app(before=bware, lifespan=lifespan)
@@ -105,8 +106,18 @@ def logout(session):
 
 # Main page
 @rt('/')
-def get():
-    return Title('Image Upload Demo'), Main(image_upload(), cls='container', id='root')
+def get(auth):
+    if not auth: return RedirectResponse('/login', 303)
+    
+    return Titled("Create Sticker",
+        Div(
+            Grid(
+                H1("Sticker Creator"),
+                A("View Your Stickers", href="/dashboard", cls="button")
+            ),
+            image_upload()
+        )
+    )
 
 def image_upload(): 
     return Article(
@@ -114,13 +125,11 @@ def image_upload():
         Form(hx_post="stickerize", hx_target="#main_content", 
              hx_encoding="multipart/form-data", 
              hx_trigger="submit",
-             # Add loading state indicators
              hx_indicator="#loading-spinner")(
             Input(type='text', id='sticker_name', name='sticker_name', accept='text/*'),
             Input(type='file', id='image_input', name='image_input', accept='image/*'),
             Button("Stickerize Image", type="submit"), 
         ),
-        # Add loading spinner element (hidden by default)
         Div(
             Div("Processing image...", cls="spinner-text"),
             cls="spinner-container",
@@ -158,7 +167,6 @@ def processing_preview(basename: str, sticker_name: str, sticker_url):
 
 @rt('/stickerize')
 async def post(sticker_name: str, image_input: UploadFile, session):
-    # Generate unique ID for this processing job
     basename = str(uuid.uuid4())[:4]
     bytes = await image_input.read()
     img = Image.open(BytesIO(bytes))
@@ -166,12 +174,10 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     img = ImageOps.exif_transpose(img)
     input_path = f"{app.state.config.workspace_dir}/input/{basename}.png"
     img.save(input_path)
-    # Start processing in background thread
     process_image(basename, sticker_name, app.state.config)
     output_path = f"{app.state.config.workspace_dir}/output/{basename}.png"
     session['sticker_url'] = output_path
     session['sticker_name'] = sticker_name
-    # Return immediate response with loading state
     return processing_preview(basename, sticker_name, output_path)
 
 @rt('/process-status/{basename}')
@@ -183,45 +189,6 @@ def get_process_status(basename: str, session):
 def process_image(basename: str, sticker_name: str, config):
     """Process image in background thread"""
     stickerize(f"{basename}.png", sticker_name, config)
-
-# Add some CSS for the spinner
-# SPINNER_CSS = """
-# .spinner-container {
-#     text-align: center;
-#     padding: 20px;
-#     background: #f5f5f5;
-#     border-radius: 4px;
-#     margin: 10px 0;
-# }
-
-# .spinner-text {
-#     display: inline-block;
-#     padding-left: 20px;
-#     position: relative;
-# }
-
-# .spinner-text:before {
-#     content: '';
-#     position: absolute;
-#     left: 0;
-#     top: 50%;
-#     width: 12px;
-#     height: 12px;
-#     margin-top: -6px;
-#     border: 2px solid #333;
-#     border-top-color: transparent;
-#     border-radius: 50%;
-#     animation: spin 1s linear infinite;
-# }
-
-# @keyframes spin {
-#     to { transform: rotate(360deg); }
-# }
-# """
-
-# Add the CSS to your app's styles
-# app.add_style(SPINNER_CSS)
-
 
 @rt('/post-to-storefront')
 async def post(session):
@@ -301,3 +268,66 @@ def collection_accordion():
     #     question_cls="text-black s-body", answer_cls=a_cls, container_cls=c_cls)
     #     for id,(q,a) in enumerate(qas)]
     return accordion()
+
+@rt("/dashboard")
+def get(auth, app: FastHTML):
+    if not auth: return RedirectResponse('/login', 303)
+    
+    # Get database connection from app state
+    db_client = app.state.db_client
+    
+    # Get user's stickers
+    with Session(db_client.engine) as session:
+        user_stickers = session.execute(
+            select(Sticker).where(Sticker.creator == auth)
+        ).scalars().all()
+    
+    return Titled(
+        f"Your Stickers",
+        Div(
+            H2("Your Stickers"),
+            A("Create New Sticker", href="/", cls="button"),
+            Div(
+                H3("Drafts"),
+                Ul(*[sticker_to_li(s) for s in user_stickers if not s.storefront_product_id]),
+                H3("Published"),
+                Ul(*[sticker_to_li(s) for s in user_stickers if s.storefront_product_id]),
+                id="sticker-list"
+            )
+        )
+    )
+
+def sticker_to_li(sticker: Sticker):
+    """Convert a Sticker model to a list item for display"""
+    edit = AX('Edit', f'/sticker/{sticker.sticker_id}', 'sticker-editor')
+    preview = AX('Preview', f'/preview/{sticker.sticker_id}', 'preview-area')
+    status = "published" if sticker.storefront_product_id else "draft"
+    return Li(
+        f"{sticker.name}",
+        Div(edit, ' | ', preview),
+        cls=f"sticker-{status}"
+    )
+
+@rt("/create-sticker") 
+def post(text: str, name: str, auth, app: FastHTML):
+    if not auth: return RedirectResponse('/login', 303)
+    
+    db_client = app.state.db_client
+    
+    # Create new sticker
+    with Session(db_client.engine) as session:
+        new_sticker = Sticker(
+            name=name,
+            creator=auth,
+            storefront_product_id=None  # Will be set when published
+        )
+        session.add(new_sticker)
+        session.commit()
+        sticker_id = new_sticker.sticker_id
+    
+    return (
+        Div(f"Sticker '{name}' saved!", id="notifications"),
+        # Your existing preview generation code...
+    )
+
+serve()

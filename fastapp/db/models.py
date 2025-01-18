@@ -1,6 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, ForeignKey, String, Integer, func
+from sqlalchemy import Column, ForeignKey, String, Integer, func, DateTime
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -27,10 +27,11 @@ class Sticker(Base):
     __tablename__ = 'stickers'
 
     sticker_id = Column(Integer, primary_key=True, autoincrement=True)
-    storefront_product_id = Column(String(100), nullable=False)
+    storefront_product_id = Column(String(100), nullable=True)
     name = Column(String(100), nullable=False)
     sales = Column(Integer, default=0)
     creator = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
 
     # Define back_populates for bidirectional relationship
     creator_user = relationship('User', back_populates='stickers')

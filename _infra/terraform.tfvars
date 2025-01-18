@@ -6,6 +6,7 @@ cloud_run_image  = "us-central1-docker.pkg.dev/sticker-maker-439910/sticker-make
 database_password = "dopeStickerY0u78Know"
 allowed_origins   = "https://your-domain.com"
 project_number = "376442012597"
+is_local         = "false"
 
 sell_app_token         = "your-sell-app-token"
 replicate_api_token    = "your-replicate-api-token"

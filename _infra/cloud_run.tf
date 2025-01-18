@@ -54,7 +54,7 @@ resource "google_cloud_run_service" "cloudrun_service" {
         }
         env {
           name  = "IS_LOCAL"
-          value = "false"
+          value = var.is_local
         }
         env {
           name  = "SENDER_EMAIL"
