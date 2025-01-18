@@ -107,9 +107,6 @@ class DbClient():
                 result = conn.execute(text("SELECT user_id, name FROM users WHERE email = :email"), {"email": email})
                 print("about to unpack")
                 user_id, name = result.first()
-            print("user_id, name")
-            print(user_id, name)
-            breakpoint()
             return user_id, name
         except Exception as e:
                     print(f"Error getting user info: {e}")

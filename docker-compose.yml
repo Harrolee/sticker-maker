@@ -20,6 +20,9 @@ services:
   migration:
     build: .
     command: alembic upgrade head
+    working_dir: /app/fastapp/db
+    volumes:
+      - .:/app
     depends_on:
       db:
         condition: service_healthy
