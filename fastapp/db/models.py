@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, ForeignKey, String, Integer, func, DateTime
+from enum import Enum
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -22,6 +23,11 @@ class User(Base):
     def __repr__(self):
         return f"id: {self.user_id}, name: {self.name}"
 
+class StickerStatus(str, Enum):
+    PROCESSING = "processing"
+    READY = "ready"
+    ERROR = "error"
+
 class Sticker(Base):
     __tablename__ = 'stickers'
 
@@ -31,6 +37,8 @@ class Sticker(Base):
     sales = Column(Integer, default=0)
     creator = Column(Integer, ForeignKey('users.user_id'), nullable=False)
     created_at = Column(DateTime, default=func.now())
+    status = Column(String, nullable=False, default=StickerStatus.READY)
+    image_path = Column(String, nullable=True)
 
     # Define back_populates for bidirectional relationship
     creator_user = relationship('User', back_populates='stickers')
