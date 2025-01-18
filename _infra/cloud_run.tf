@@ -49,10 +49,6 @@ resource "google_cloud_run_service" "cloudrun_service" {
           value = var.replicate_api_token
         }
         env {
-          name  = "REPLICATE_MODEL_HASH"
-          value = var.replicate_model_hash
-        }
-        env {
           name  = "IS_LOCAL"
           value = var.is_local
         }

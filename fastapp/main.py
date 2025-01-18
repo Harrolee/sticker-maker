@@ -2,7 +2,7 @@ from fastcore.parallel import threaded
 from contextlib import asynccontextmanager
 import uuid
 from io import BytesIO
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from fasthtml.common import *
 # from fasthtml.oauth import GoogleAppClient, GitHubAppClient, redir_url
 from PIL import Image, ImageOps
@@ -17,7 +17,11 @@ from fastapp.db.models import Sticker, User
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, select
+import os
 
+# Load .env file if it exists
+if os.path.exists(".env"):
+    load_dotenv()
 
 # auth_config = AuthConfig()
 # google_client = GoogleAppClient(

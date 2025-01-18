@@ -8,9 +8,14 @@ resource "google_sql_database_instance" "postgres_instance" {
     tier = var.database_tier
     
     ip_configuration {
-      ipv4_enabled    = false
+      ipv4_enabled    = true
       private_network = google_compute_network.vpc.id
       require_ssl     = true
+      
+      authorized_networks {
+        name  = "allow-local-development"
+        value = "107.133.206.96/28"
+      }
     }
 
     backup_configuration {
@@ -50,12 +55,12 @@ resource "google_sql_database_instance" "postgres_instance" {
 }
 
 resource "google_sql_database" "postgres_db" {
-  name     = "mydatabase"
+  name     = "sticker-maker-db"
   instance = google_sql_database_instance.postgres_instance.name
 }
 
 resource "google_sql_user" "postgres_user" {
-  name     = "myuser"
+  name     = "postgres"
   instance = google_sql_database_instance.postgres_instance.name
-  password = "mypassword"  # Use a secure method to handle passwords in production
+  password = var.database_password
 } 

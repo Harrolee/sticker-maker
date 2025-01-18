@@ -57,6 +57,9 @@ resource "google_cloudfunctions2_function" "webhook_function" {
       MJ_APIKEY_PUBLIC         = var.mailjet_api_key_public
       SMTP_HOST                = var.smtp_host
       SMTP_PORT                = var.smtp_port
+      SENDER_EMAIL             = var.sender_email
+      SUPPLIER_EMAIL           = var.supplier_email
+      SUPPORT_EMAIL            = var.support_email
     }
 
     # Sensitive environment variables using secrets
@@ -70,6 +73,12 @@ resource "google_cloudfunctions2_function" "webhook_function" {
       key        = "MJ_APIKEY_PRIVATE"
       project_id = var.project_id
       secret     = "mailjet-api-key-private"
+      version    = "latest"
+    }
+    secret_environment_variables {
+      key        = "SENDER_EMAIL_PASSWORD"
+      project_id = var.project_id
+      secret     = "sender-email-password"
       version    = "latest"
     }
   }

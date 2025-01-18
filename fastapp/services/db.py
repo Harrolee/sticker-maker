@@ -1,6 +1,5 @@
 from google.cloud.sql.connector import Connector
 from sqlalchemy import create_engine, text
-import pg8000
 import os
 
 class DbClient():
@@ -11,14 +10,17 @@ class DbClient():
 
     def _setup_connection(self):
         if self.is_local:
+            print("Setting up local database connection...")
             self.db_user = 'postgres'
             self.db_name = 'postgres'
             self.db_pass = 'postgres'
-            self.db_host = 'localhost'
+            self.db_host = 'db' if os.environ.get('DOCKER_ENV') else 'localhost'
             self.engine = create_engine(
                 f"postgresql+psycopg2://{self.db_user}:{self.db_pass}@{self.db_host}:5432/{self.db_name}"
             )
+            print("Local database connection established")
         else:
+            print("Setting up cloud database connection...")
             self.db_user = os.environ.get('DB_USER')
             self.db_name = os.environ.get('DB_NAME')
             self.db_pass = os.environ.get('DB_PASS')
@@ -103,7 +105,11 @@ class DbClient():
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(text("SELECT user_id, name FROM users WHERE email = :email"), {"email": email})
+                print("about to unpack")
                 user_id, name = result.first()
+            print("user_id, name")
+            print(user_id, name)
+            breakpoint()
             return user_id, name
         except Exception as e:
                     print(f"Error getting user info: {e}")

@@ -5,18 +5,18 @@ from sqlalchemy import pool
 
 from alembic import context
 
-
-from config import DbConfig
 from models import Base
 
-
-sticker_config = DbConfig()
+db_user = 'postgres'
+db_name = 'postgres'
+db_pass = "just paste the password here. I don't know why dotenv can't find the correct env var and I'm moving on"
+# When using Cloud SQL Proxy, connect to localhost:5432
+db_host = 'localhost'
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
-config.set_main_option("sqlalchemy.url", sticker_config.db_connection_string)
+config.set_main_option("sqlalchemy.url", f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:5432/{db_name}")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
