@@ -78,3 +78,10 @@ alembic downgrade -1
 ```bash
 alembic downgrade <migration_id>
 ```
+
+# Plans
+
+### Dashboard
+- option to create a band. When a band is created, it can be selected from the dropdown in the sticker creation page. Band is associated with a user, and other users can be added to the band
+- option to override sticker productdescriptions
+- option to create a pack of stickers and define sticker descriptions

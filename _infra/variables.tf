@@ -65,11 +65,6 @@ variable "replicate_api_token" {
   sensitive   = true
 }
 
-variable "replicate_model_hash" {
-  description = "Model hash for Replicate.ai"
-  type        = string
-}
-
 variable "sender_email" {
   description = "Email address used to send notifications"
   type        = string

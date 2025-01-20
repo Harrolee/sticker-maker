@@ -13,7 +13,7 @@ from fastapp.services.storefront import StickerPublisher, StorefrontProduct
 from fastapp.ui_components import accordion
 from fastapp.make_sticker.main import stickerize
 from dataclasses import dataclass
-from fastapp.db.models import Sticker, User
+from fastapp.db.models import Sticker, User, StickerStatus
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, select
@@ -170,7 +170,7 @@ def processing_preview(basename: str, sticker_name: str, sticker_url):
         )
 
 @rt('/stickerize')
-async def post(sticker_name: str, image_input: UploadFile, session):
+async def post(sticker_name: str, image_input: UploadFile, session, app: FastHTML):
     basename = str(uuid.uuid4())[:4]
     bytes = await image_input.read()
     img = Image.open(BytesIO(bytes))
@@ -178,11 +178,27 @@ async def post(sticker_name: str, image_input: UploadFile, session):
     img = ImageOps.exif_transpose(img)
     input_path = f"{app.state.config.workspace_dir}/input/{basename}.png"
     img.save(input_path)
-    process_image(basename, sticker_name, app.state.config)
-    output_path = f"{app.state.config.workspace_dir}/output/{basename}.png"
-    session['sticker_url'] = output_path
-    session['sticker_name'] = sticker_name
-    return processing_preview(basename, sticker_name, output_path)
+    
+    # Create sticker record immediately
+    with Session(app.state.db_client.engine) as db_session:
+        new_sticker = Sticker(
+            name=sticker_name,
+            creator=session['user_id'],
+            status=StickerStatus.PROCESSING,
+            image_path=f"{app.state.config.workspace_dir}/output/{basename}.png"
+        )
+        db_session.add(new_sticker)
+        db_session.commit()
+        sticker_id = new_sticker.sticker_id
+
+    # Start processing in background
+    process_image(basename, sticker_name, app.state.config, sticker_id, app.state.db_client)
+    
+    return JSONResponse(
+        content={"message": "Sticker creation started"},
+        status_code=200,
+        headers={"HX-Redirect": "/dashboard"}
+    )
 
 @rt('/process-status/{basename}')
 def get_process_status(basename: str, session):
@@ -190,9 +206,31 @@ def get_process_status(basename: str, session):
     return processing_preview(basename, session['sticker_name'], session['sticker_url'])
 
 @threaded
-def process_image(basename: str, sticker_name: str, config):
+def process_image(basename: str, sticker_name: str, config, sticker_id: int, db_client: DbClient):
     """Process image in background thread"""
-    stickerize(f"{basename}.png", sticker_name, config)
+    try:
+        print(f"Starting to process sticker {sticker_id} with basename {basename}")  # Debug logging
+        stickerize(f"{basename}.png", sticker_name, config)
+        print(f"Stickerize completed for {sticker_id}")  # Debug logging
+        
+        # Update status when complete
+        with Session(db_client.engine) as session:
+            sticker = session.get(Sticker, sticker_id)
+            sticker.status = StickerStatus.READY
+            session.commit()
+            print(f"Updated sticker {sticker_id} status to READY")  # Debug logging
+            
+    except Exception as e:
+        # Log the actual error
+        print(f"Error processing sticker {sticker_id}: {str(e)}")  # Debug logging
+        print(f"Error type: {type(e)}")  # Debug logging
+        
+        # Update status on error
+        with Session(db_client.engine) as session:
+            sticker = session.get(Sticker, sticker_id)
+            sticker.status = StickerStatus.ERROR
+            sticker.error_message = str(e)  # You'll need to add this field to your Sticker model
+            session.commit()
 
 @rt('/post-to-storefront')
 async def post(session):
@@ -303,14 +341,38 @@ def get(auth, app: FastHTML):
 
 def sticker_to_li(sticker: Sticker):
     """Convert a Sticker model to a list item for display"""
+    if sticker.status == StickerStatus.PROCESSING:
+        return Li(
+            f"{sticker.name} ",
+            Span("(Processing...)", cls="processing-status"),
+            id=f"sticker-{sticker.sticker_id}",
+            hx_get=f"/sticker-status/{sticker.sticker_id}",
+            hx_trigger="every 3s",
+            cls="sticker-processing"
+        )
+    
     edit = AX('Edit', f'/sticker/{sticker.sticker_id}', 'sticker-editor')
     preview = AX('Preview', f'/preview/{sticker.sticker_id}', 'preview-area')
     status = "published" if sticker.storefront_product_id else "draft"
+    
+    if sticker.status == StickerStatus.ERROR:
+        status_text = Span("(Error during processing)", cls="error-status")
+    else:
+        status_text = ""
+    
     return Li(
-        f"{sticker.name}",
+        f"{sticker.name} ", status_text,
         Div(edit, ' | ', preview),
+        id=f"sticker-{sticker.sticker_id}",
         cls=f"sticker-{status}"
     )
+
+@rt("/sticker-status/{sticker_id}")
+def get(sticker_id: int, app: FastHTML):
+    """Endpoint to check individual sticker status"""
+    with Session(app.state.db_client.engine) as session:
+        sticker = session.get(Sticker, sticker_id)
+        return sticker_to_li(sticker)
 
 @rt("/create-sticker") 
 def post(text: str, name: str, auth, app: FastHTML):
