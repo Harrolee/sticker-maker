@@ -28,6 +28,13 @@ jobs:
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
+        
+      - name: Debug GCP Configuration
+        run: |
+          echo "GCP Region: ${{ secrets.GCP_REGION }}"
+          echo "GCP Project ID: ${{ secrets.GCP_PROJECT_ID }}"
+          echo "Repository Name: ${{ env.GAR_REPO_NAME }}"
+          gcloud artifacts repositories list --project=${{ secrets.GCP_PROJECT_ID }} --location=${{ secrets.GCP_REGION }}
 
       - name: Authenticate Docker to Google Cloud Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
