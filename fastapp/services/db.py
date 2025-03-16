@@ -3,10 +3,19 @@ from sqlalchemy import create_engine, text
 import os
 
 class DbClient():
+    # Class variable to store users across instances
+    _users = {
+        'test': {
+            'username': 'test',
+            'password': 'test'
+        }
+    }
+    
     def __init__(self):
         self.is_local = os.environ.get('IS_LOCAL', 'false').lower() == 'true'
         self._setup_connection()
         self.queries = self.Queries()
+        # No need to initialize users here as we're using the class variable
 
     def _setup_connection(self):
         if self.is_local:
@@ -48,6 +57,7 @@ class DbClient():
                 self.connector.close()
             except Exception as e:
                 print(f"Error closing Cloud SQL connector: {e}")
+        # In a real application, you would close your database connection here
 
     def __enter__(self):
         return self
@@ -82,15 +92,21 @@ class DbClient():
             stmt = text("select * from postgres")
             print(conn.execute(stmt).fetchall())
 
-    def create_user(self, name, email):
-        try:
-            with self.engine.connect() as conn:
-                with conn.begin():
-                    result = conn.execute(self.queries.create_user(name, email))
-                    user_id = result.scalar()  # Fetch the generated user_id
-                return user_id
-        except Exception as e:
-                print(f"Error creating user: {e}")
+    def get_user_by_username(self, username):
+        """Get a user by username"""
+        print(f"Looking up user: {username} in users: {DbClient._users}")
+        return DbClient._users.get(username)
+
+    def create_user(self, username, password):
+        """Create a new user"""
+        # In a real application, you would hash the password before storing it
+        print(f"Creating user: {username}")
+        DbClient._users[username] = {
+            'username': username,
+            'password': password
+        }
+        print(f"Users after creation: {DbClient._users}")
+        return DbClient._users[username]
 
     def all_users(self) -> int | None:
         try:
