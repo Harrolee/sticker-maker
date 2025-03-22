@@ -18,7 +18,9 @@ def setup_auth_routes(app):
     rt = app.route
     
     @rt("/login")
-    def get():
+    def get(request):
+        auth_config = request.app.state.auth_config
+        
         login_form = Form(
             Div(
                 H1("Login", cls="text-center mb-4"),
@@ -44,6 +46,23 @@ def setup_auth_routes(app):
             method="post",
             cls="login-form p-4"
         )
+
+        # Add OAuth buttons if enabled
+        if auth_config.is_oauth_enabled:
+            oauth_buttons = Div(
+                H3("Or login with:", cls="text-center mb-3"),
+                Div(
+                    A("Login with Google", 
+                      href="/auth/google",
+                      cls="btn btn-light w-100 mb-2"),
+                    A("Login with GitHub",
+                      href="/auth/github", 
+                      cls="btn btn-dark w-100"),
+                    cls="oauth-buttons"
+                ),
+                cls="mt-4"
+            )
+            login_form = Div(login_form, oauth_buttons)
         
         return Titled("Login", login_form)
     
@@ -192,4 +211,19 @@ def setup_auth_routes(app):
     def get(session):
         if 'user_id' in session:
             del session['user_id']
-        return RedirectResponse('/login', status_code=303) 
+        return RedirectResponse('/login', status_code=303)
+
+    if app.state.auth_config.is_oauth_enabled:
+        @rt("/auth/google")
+        def get_google_auth(request):
+            client = request.app.state.google_client
+            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
+            auth_url = client.get_auth_url(redirect_uri, state='google')
+            return RedirectResponse(auth_url)
+
+        @rt("/auth/github")
+        def get_github_auth(request):
+            client = request.app.state.github_client
+            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
+            auth_url = client.get_auth_url(redirect_uri, state='github')
+            return RedirectResponse(auth_url) 

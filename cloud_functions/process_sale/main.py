@@ -228,7 +228,7 @@ def send_email(payload):
         print(f"Email send status: {status_code}")
         print(f"Email send response: {response}")
         
-        if status_code == 200:
+        if status_code == 200 or status_code == 201:
             return True
         else:
             print(f"Failed to send email. Status code: {status_code}, Response: {response}")

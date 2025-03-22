@@ -9,9 +9,12 @@ from models import Base
 
 db_user = 'postgres'
 db_name = 'postgres'
-db_pass = 'postgres' # for prod migrations, just paste the password here. I don't know why dotenv can't find the correct env var and I'm moving on
+# db_pass = 'postgres' # for prod migrations, just paste the password here. I don't know why dotenv can't find the correct env var and I'm moving on
 # When using Cloud SQL Proxy, connect to localhost:5432
-db_host = 'db' # for prod migrations, use 'localhost'
+# db_pass = 'dishf1$#^&*aisofh8937732'
+# db_host = 'localhost' #'db' # for prod migrations, use 'localhost'
+db_pass = 'postgres'
+db_host = 'db'
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

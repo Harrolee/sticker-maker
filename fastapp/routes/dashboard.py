@@ -22,12 +22,12 @@ def setup_dashboard_routes(app: FastHTML, rt):
                 Div(
                     H3("Drafts"),
                     Ul(
-                        *[sticker_to_li(s) for s in user_stickers if not s.storefront_product_id],
+                        *[sticker_to_li(s, app) for s in user_stickers if not s.storefront_product_id],
                         id="drafts-list"
                     ),
                     H3("Published"),
                     Ul(
-                        *[sticker_to_li(s) for s in user_stickers if s.storefront_product_id],
+                        *[sticker_to_li(s, app) for s in user_stickers if s.storefront_product_id],
                         id="published-list"
                     ),
                     id="sticker-list"
@@ -41,32 +41,9 @@ def setup_dashboard_routes(app: FastHTML, rt):
         """Endpoint to check individual sticker status"""
         with Session(app.state.db_client.engine) as session:
             sticker = session.get(Sticker, sticker_id)
-            
-            # If sticker is no longer processing, return the full list to trigger reorganization
-            if sticker.status != StickerStatus.PROCESSING:
-                # Get all stickers for this user to rebuild the lists
-                user_stickers = session.execute(
-                    select(Sticker).where(Sticker.creator == sticker.creator)
-                ).scalars().all()
-                
-                return Div(
-                    H3("Drafts"),
-                    Ul(
-                        *[sticker_to_li(s) for s in user_stickers if not s.storefront_product_id],
-                        id="drafts-list"
-                    ),
-                    H3("Published"), 
-                    Ul(
-                        *[sticker_to_li(s) for s in user_stickers if s.storefront_product_id],
-                        id="published-list"
-                    ),
-                    id="sticker-list"
-                )
-            
-            # If still processing, just return the individual item
-            return sticker_to_li(sticker)
+            return sticker_to_li(sticker, app)
 
-def sticker_to_li(sticker: Sticker):
+def sticker_to_li(sticker: Sticker, app: FastHTML):
     """Convert a Sticker model to a list item for display"""
     if sticker.status == StickerStatus.PROCESSING:
         return Li(
@@ -75,7 +52,8 @@ def sticker_to_li(sticker: Sticker):
             id=f"sticker-{sticker.sticker_id}",
             hx_get=f"/sticker-status/{sticker.sticker_id}",
             hx_trigger="every 3s",
-            hx_target="#sticker-list",
+            hx_target=f"#sticker-{sticker.sticker_id}",
+            hx_swap="outerHTML",
             cls="sticker-processing"
         )
     
