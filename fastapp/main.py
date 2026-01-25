@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from fasthtml.common import *
 from fastapp.make_sticker.config import StickerConfig
 from fastapp.services.db import DbClient
-from fastapp.routes.auth import setup_auth_routes
+from fastapp.routes.auth import setup_auth_routes, build_redirect_uri
 from fastapp.routes.stickers import setup_sticker_routes
 from fastapp.routes.dashboard import setup_dashboard_routes
 from fastapp.routes.admin import setup_admin_routes
@@ -160,7 +160,7 @@ def create_app():
         if auth_config.is_auth0_enabled:
             @app.get(auth_callback_path)
             def auth_redirect(code: str, state: str, request, session):
-                redir = redir_url(request, auth_callback_path, scheme='http')
+                redir = build_redirect_uri(request, auth_callback_path)
                 db_client = request.app.state.db_client
 
                 if state != 'auth0':

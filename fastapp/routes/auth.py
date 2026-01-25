@@ -3,6 +3,13 @@ from fastapp.services.db import DbClient
 from starlette.responses import JSONResponse, RedirectResponse
 from dataclasses import dataclass
 
+def build_redirect_uri(request, path: str) -> str:
+    """Build a full redirect URI from the request and path."""
+    # Use X-Forwarded headers if behind a proxy (like Cloud Run)
+    proto = request.headers.get('x-forwarded-proto', request.url.scheme)
+    host = request.headers.get('x-forwarded-host', request.url.netloc)
+    return f"{proto}://{host}{path}"
+
 @dataclass
 class LoginForm:
     username: str
@@ -234,6 +241,6 @@ def setup_auth_routes(app):
         @rt("/auth/auth0")
         def get_auth0_auth(request):
             client = request.app.state.auth0_client
-            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
+            redirect_uri = build_redirect_uri(request, "/auth_redirect")
             auth_url = client.get_auth_url(redirect_uri, state='auth0')
             return RedirectResponse(auth_url)
