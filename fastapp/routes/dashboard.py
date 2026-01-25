@@ -15,8 +15,16 @@ def setup_dashboard_routes(app: FastHTML, rt):
         db_client = app.state.db_client
 
         with Session(db_client.engine) as session:
-            # Look up user_id from username
-            user = session.query(User).filter(User.username == auth).first()
+            # Handle both numeric user_id (Auth0) and username (legacy) in session
+            user = None
+            # Try as numeric user_id first
+            try:
+                user_id = int(auth)
+                user = session.query(User).filter(User.user_id == user_id).first()
+            except (ValueError, TypeError):
+                # Fall back to username lookup
+                user = session.query(User).filter(User.username == auth).first()
+
             if not user:
                 return Titled("Dashboard", P("User not found. Please log in again."))
 

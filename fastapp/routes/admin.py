@@ -166,8 +166,13 @@ def setup_admin_routes(app: FastHTML, rt):
 
             # Create sticker record
             with Session(app.state.db_client.engine) as db_session:
-                # Look up user_id from username
-                user = db_session.query(User).filter(User.username == auth).first()
+                # Handle both numeric user_id (Auth0) and username (legacy)
+                user = None
+                try:
+                    user_id = int(auth)
+                    user = db_session.query(User).filter(User.user_id == user_id).first()
+                except (ValueError, TypeError):
+                    user = db_session.query(User).filter(User.username == auth).first()
                 if not user:
                     continue
 

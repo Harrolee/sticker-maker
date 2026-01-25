@@ -14,9 +14,20 @@ from starlette.requests import Request
 from fastapp.make_sticker.main import stickerize, get_available_styles, DEFAULT_STYLE
 
 
-def get_user_id_from_username(db_session, username: str) -> int | None:
-    """Look up user_id from username"""
-    user = db_session.query(User).filter(User.username == username).first()
+def get_user_id_from_session(db_session, session_user_id) -> int | None:
+    """Get user_id from session value (could be username string or user_id int)"""
+    # If it's already an integer, it's the user_id directly (Auth0 login)
+    if isinstance(session_user_id, int):
+        return session_user_id
+
+    # Try to convert to int (might be stored as string)
+    try:
+        return int(session_user_id)
+    except (ValueError, TypeError):
+        pass
+
+    # Otherwise look up by username (legacy username/password login)
+    user = db_session.query(User).filter(User.username == session_user_id).first()
     return user.user_id if user else None
 
 def setup_sticker_routes(app: FastHTML, rt):
@@ -49,7 +60,7 @@ def setup_sticker_routes(app: FastHTML, rt):
 
         # Create sticker record immediately
         with Session(app.state.db_client.engine) as db_session:
-            user_id = get_user_id_from_username(db_session, session['user_id'])
+            user_id = get_user_id_from_session(db_session, session['user_id'])
             if not user_id:
                 return JSONResponse({"error": "User not found"}, status_code=400)
 
@@ -109,7 +120,7 @@ def setup_sticker_routes(app: FastHTML, rt):
             sticker_id = None
             if publish:
                 with Session(app.state.db_client.engine) as db_session:
-                    user_id = get_user_id_from_username(db_session, session['user_id'])
+                    user_id = get_user_id_from_session(db_session, session['user_id'])
                     if not user_id:
                         continue  # Skip this image if user not found
 
