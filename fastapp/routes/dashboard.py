@@ -1,24 +1,38 @@
 from fasthtml.common import *
-from fastapp.db.models import Sticker, StickerStatus
+from fastapp.db.models import Sticker, StickerStatus, User
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+import os
+
+# Simple admin check - matches admin.py
+ADMIN_USERS = os.environ.get('ADMIN_USERS', 'admin').split(',')
 
 def setup_dashboard_routes(app: FastHTML, rt):
     @rt("/dashboard")
     def get(auth, app: FastHTML):
         if not auth: return RedirectResponse('/login', 303)
-        
+
         db_client = app.state.db_client
-        
+
         with Session(db_client.engine) as session:
+            # Look up user_id from username
+            user = session.query(User).filter(User.username == auth).first()
+            if not user:
+                return Titled("Dashboard", P("User not found. Please log in again."))
+
             user_stickers = session.execute(
-                select(Sticker).where(Sticker.creator == auth)
+                select(Sticker).where(Sticker.creator == user.user_id)
             ).scalars().all()
         
+        # Build action buttons
+        action_buttons = [A("Create New Sticker", href="/", cls="button")]
+        if auth in ADMIN_USERS:
+            action_buttons.append(A("Admin: Batch Upload", href="/admin", cls="button", style="margin-left: 10px;"))
+
         return Titled(
             f"Your Stickers",
             Div(
-                A("Create New Sticker", href="/", cls="button"),
+                Div(*action_buttons),
                 Div(
                     H3("Drafts"),
                     Ul(

@@ -1,4 +1,5 @@
 from logging.config import fileConfig
+import os
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -7,19 +8,23 @@ from alembic import context
 
 from models import Base
 
-db_user = 'postgres'
-db_name = 'postgres'
-# db_pass = 'postgres' # for prod migrations, just paste the password here. I don't know why dotenv can't find the correct env var and I'm moving on
-# When using Cloud SQL Proxy, connect to localhost:5432
-# db_pass = 'dishf1$#^&*aisofh8937732'
-# db_host = 'localhost' #'db' # for prod migrations, use 'localhost'
-db_pass = 'postgres'
-db_host = 'db'
+# Use DATABASE_URL if set (production/Neon), otherwise use local defaults
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Production: use Neon DATABASE_URL
+    pass
+else:
+    # Local development defaults
+    db_user = 'postgres'
+    db_name = 'postgres'
+    db_pass = 'postgres'
+    db_host = 'db'
+    database_url = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:5432/{db_name}")
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

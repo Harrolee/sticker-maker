@@ -1,51 +1,19 @@
 import os
 import json
-import pg8000
 import sqlalchemy
 import functions_framework
 import traceback
-from google.cloud.sql.connector import Connector, IPTypes
 from flask import jsonify, request
 from mailjet_rest import Client
 import time
 
-def connect_with_connector() -> sqlalchemy.engine.base.Engine:
+def connect_to_db() -> sqlalchemy.engine.base.Engine:
     """
-    Initializes a connection pool for a Cloud SQL instance of Postgres.
-
-    Uses the Cloud SQL Python Connector package.
+    Initializes a connection pool for Neon Postgres.
     """
-
-    instance_connection_name = os.environ[
-        "INSTANCE_CONNECTION_NAME"
-    ]
-    db_user = os.environ["DB_USER"]
-    db_pass = os.environ["DB_PASS"]
-    db_name = os.environ["DB_NAME"]
-
-    ip_type = IPTypes.PRIVATE if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC
-
-    # lazy cuz cloud function
-    connector = Connector(refresh_strategy="lazy")
-
-    def getconn() -> pg8000.dbapi.Connection:
-        conn: pg8000.dbapi.Connection = connector.connect(
-            instance_connection_name,
-            "pg8000",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-            ip_type=ip_type,
-        )
-        return conn
-
-    # The Cloud SQL Python Connector can be used with SQLAlchemy
-    # using the 'creator' argument to 'create_engine'
-    pool = sqlalchemy.create_engine(
-        "postgresql+pg8000://",
-        creator=getconn,
-    )
-    return pool, connector
+    database_url = os.environ["DATABASE_URL"]
+    pool = sqlalchemy.create_engine(database_url)
+    return pool
 
 
 def write_to_db(product_variant_id, quantity):
@@ -60,7 +28,7 @@ def write_to_db(product_variant_id, quantity):
         A tuple containing a response and status code
     """
     try:
-        pool, connector = connect_with_connector()
+        pool = connect_to_db()
         get_sticker_id = sqlalchemy.text(
             f"""
             SELECT sticker_id FROM "public".stickers
@@ -86,11 +54,11 @@ def write_to_db(product_variant_id, quantity):
             try:
                 result = db_conn.execute(get_sticker_id)
                 sticker_id_rows = result.fetchall()
-                
+
                 if not sticker_id_rows:
                     print(f"No sticker found with product_variant_id: {product_variant_id}")
                     return jsonify({"warning": "No matching sticker found in database"}), 200
-                    
+
                 sticker_id = sticker_id_rows[0][0]
                 db_conn.execute(update_purchase_count(sticker_id, quantity))
                 db_conn.execute(update_user_credits(sticker_id, quantity))
@@ -102,8 +70,7 @@ def write_to_db(product_variant_id, quantity):
                 print(traceback.format_exc())
                 return jsonify({"error": f"Failed to update database: {str(e)}"}), 500
     finally:
-        if 'connector' in locals():
-            connector.close()
+        pass  # Connection pooling handled by SQLAlchemy
 
 
 def send_email(payload):

@@ -29,6 +29,29 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
 
+  # FastHTML web app
+  web:
+    build: .
+    ports:
+      - "5001:5001"
+    volumes:
+      - .:/code
+    depends_on:
+      db:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      IS_LOCAL: "true"
+      DOCKER_ENV: "true"
+      ADMIN_USERS: "${ADMIN_USERS:-admin}"
+      REPLICATE_API_TOKEN: "${REPLICATE_API_TOKEN:-}"
+      REPLICATE_CARTOONIZE_MODEL_HASH: "${REPLICATE_CARTOONIZE_MODEL_HASH:-}"
+      REPLICATE_RM_BACKGROUND_MODEL_HASH: "${REPLICATE_RM_BACKGROUND_MODEL_HASH:-}"
+      SELL_APP_TOKEN: "${SELL_APP_TOKEN:-}"
+      SELL_APP_STOREFRONT_NAME: "${SELL_APP_STOREFRONT_NAME:-}"
+    restart: unless-stopped
+
   # Fake local SMTP server
   maildev:
     image: maildev/maildev

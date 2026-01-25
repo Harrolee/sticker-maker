@@ -11,11 +11,14 @@ class User(Base):
     __tablename__ = 'users'
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), unique=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     credits = Column(Integer, default=0)
     github_id = Column(Integer, nullable=True)
     google_id = Column(Integer, nullable=True)
+    auth0_id = Column(String(255), nullable=True, unique=True)  # Auth0 'sub' field is a string
 
     # Remove the collections relationship for now
     stickers = relationship('Sticker', back_populates='creator_user', cascade='all, delete-orphan')
@@ -39,6 +42,7 @@ class Sticker(Base):
     created_at = Column(DateTime, default=func.now())
     status = Column(String, nullable=False, default=StickerStatus.READY)
     image_path = Column(String, nullable=True)
+    error_message = Column(String, nullable=True)
 
     # Define back_populates for bidirectional relationship
     creator_user = relationship('User', back_populates='stickers')
@@ -48,11 +52,11 @@ class Sticker(Base):
 
 # class Collection(Base):
 #     __tablename__ = 'collections'
-    
+
 #     collection_id = Column(Integer, primary_key=True)
 #     name = Column(String)
 #     user_id = Column(Integer, ForeignKey('users.user_id'))
-    
+
 #     # Add the back_populates to complete the bidirectional relationship
 #     creator_user = relationship('User', back_populates='collections')
 

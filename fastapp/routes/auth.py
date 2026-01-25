@@ -16,11 +16,11 @@ class CreateAccountForm:
 
 def setup_auth_routes(app):
     rt = app.route
-    
+
     @rt("/login")
     def get(request):
         auth_config = request.app.state.auth_config
-        
+
         login_form = Form(
             Div(
                 H1("Login", cls="text-center mb-4"),
@@ -47,25 +47,39 @@ def setup_auth_routes(app):
             cls="login-form p-4"
         )
 
-        # Add OAuth buttons if enabled
+        # Build OAuth buttons if any providers are enabled
+        oauth_buttons_list = []
+
         if auth_config.is_oauth_enabled:
+            oauth_buttons_list.extend([
+                A("Login with Google",
+                  href="/auth/google",
+                  cls="btn btn-light w-100 mb-2"),
+                A("Login with GitHub",
+                  href="/auth/github",
+                  cls="btn btn-dark w-100 mb-2"),
+            ])
+
+        if auth_config.is_auth0_enabled:
+            oauth_buttons_list.append(
+                A("Login with Auth0",
+                  href="/auth/auth0",
+                  cls="btn btn-info w-100")
+            )
+
+        if oauth_buttons_list:
             oauth_buttons = Div(
                 H3("Or login with:", cls="text-center mb-3"),
                 Div(
-                    A("Login with Google", 
-                      href="/auth/google",
-                      cls="btn btn-light w-100 mb-2"),
-                    A("Login with GitHub",
-                      href="/auth/github", 
-                      cls="btn btn-dark w-100"),
+                    *oauth_buttons_list,
                     cls="oauth-buttons"
                 ),
                 cls="mt-4"
             )
             login_form = Div(login_form, oauth_buttons)
-        
+
         return Titled("Login", login_form)
-    
+
     @rt("/create-account")
     def get():
         create_account_form = Form(
@@ -89,34 +103,22 @@ def setup_auth_routes(app):
             action="/complete-account-creation",
             method="post"
         )
-        
+
         return Titled("Create Account", create_account_form)
-    
+
     @rt("/complete-login")
     def post(username: str, password: str, session, request):
         # Get database client from app state
         db_client = request.app.state.db_client
-        
-        # Debug logging
-        print(f"Login attempt for user: {username}")
-        print(f"Current users in DB: {DbClient._users}")
-        
+
         # Check if user exists and password is correct
-        user = db_client.get_user_by_username(username)
-        
-        if user and user.get('password') == password:  # In production, use proper password hashing!
-            # Set user in session
+        if db_client.verify_password(username, password):
             print(f"Login successful for user: {username}")
             session['user_id'] = username
             return RedirectResponse('/', status_code=303)
         else:
-            # Debug logging
             print(f"Login failed for user: {username}")
-            if not user:
-                print(f"User not found: {username}")
-            elif user.get('password') != password:
-                print(f"Password mismatch for user: {username}")
-            
+
             # Return to login page with error
             error_form = Form(
                 Div("Invalid username or password", cls="error-message"),
@@ -136,14 +138,14 @@ def setup_auth_routes(app):
                 action="/complete-login",
                 method="post"
             )
-            
+
             return Titled("Login", error_form)
-    
+
     @rt("/complete-account-creation")
     def post(username: str, password: str, confirm_password: str, session, request):
         # Get database client from app state
         db_client = request.app.state.db_client
-        
+
         # Check if passwords match
         if password != confirm_password:
             error_form = Form(
@@ -168,9 +170,9 @@ def setup_auth_routes(app):
                 action="/complete-account-creation",
                 method="post"
             )
-            
+
             return Titled("Create Account", error_form)
-        
+
         # Check if user already exists
         existing_user = db_client.get_user_by_username(username)
         if existing_user:
@@ -196,17 +198,42 @@ def setup_auth_routes(app):
                 action="/complete-account-creation",
                 method="post"
             )
-            
+
             return Titled("Create Account", error_form)
-        
-        # Create user
-        db_client.create_user(username, password)  # In production, hash the password!
-        
+
+        # Create user (password is hashed in create_user)
+        result = db_client.create_user(username, password)
+
+        if not result:
+            error_form = Form(
+                Div("Failed to create account. Please try again.", cls="error-message"),
+                Div(
+                    Input(id="username", name="username", placeholder="Username", required=True),
+                    cls="form-group"
+                ),
+                Div(
+                    Input(id="password", name="password", type="password", placeholder="Password", required=True),
+                    cls="form-group"
+                ),
+                Div(
+                    Input(id="confirm_password", name="confirm_password", type="password", placeholder="Confirm Password", required=True),
+                    cls="form-group"
+                ),
+                Div(
+                    Button("Create Account", type="submit"),
+                    A("Back to Login", href="/login", cls="ml-2"),
+                    cls="form-actions"
+                ),
+                action="/complete-account-creation",
+                method="post"
+            )
+            return Titled("Create Account", error_form)
+
         # Set user in session
         session['user_id'] = username
-        
+
         return RedirectResponse('/', status_code=303)
-    
+
     @rt("/logout")
     def get(session):
         if 'user_id' in session:
@@ -226,4 +253,12 @@ def setup_auth_routes(app):
             client = request.app.state.github_client
             redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
             auth_url = client.get_auth_url(redirect_uri, state='github')
-            return RedirectResponse(auth_url) 
+            return RedirectResponse(auth_url)
+
+    if app.state.auth_config.is_auth0_enabled:
+        @rt("/auth/auth0")
+        def get_auth0_auth(request):
+            client = request.app.state.auth0_client
+            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
+            auth_url = client.get_auth_url(redirect_uri, state='auth0')
+            return RedirectResponse(auth_url)
