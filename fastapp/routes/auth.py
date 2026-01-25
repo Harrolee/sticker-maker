@@ -47,18 +47,8 @@ def setup_auth_routes(app):
             cls="login-form p-4"
         )
 
-        # Build OAuth buttons if any providers are enabled
+        # Build OAuth buttons if Auth0 is enabled
         oauth_buttons_list = []
-
-        if auth_config.is_oauth_enabled:
-            oauth_buttons_list.extend([
-                A("Login with Google",
-                  href="/auth/google",
-                  cls="btn btn-light w-100 mb-2"),
-                A("Login with GitHub",
-                  href="/auth/github",
-                  cls="btn btn-dark w-100 mb-2"),
-            ])
 
         if auth_config.is_auth0_enabled:
             oauth_buttons_list.append(
@@ -239,21 +229,6 @@ def setup_auth_routes(app):
         if 'user_id' in session:
             del session['user_id']
         return RedirectResponse('/login', status_code=303)
-
-    if app.state.auth_config.is_oauth_enabled:
-        @rt("/auth/google")
-        def get_google_auth(request):
-            client = request.app.state.google_client
-            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
-            auth_url = client.get_auth_url(redirect_uri, state='google')
-            return RedirectResponse(auth_url)
-
-        @rt("/auth/github")
-        def get_github_auth(request):
-            client = request.app.state.github_client
-            redirect_uri = redir_url(request, "/auth_redirect", scheme='http')
-            auth_url = client.get_auth_url(redirect_uri, state='github')
-            return RedirectResponse(auth_url)
 
     if app.state.auth_config.is_auth0_enabled:
         @rt("/auth/auth0")

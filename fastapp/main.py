@@ -119,21 +119,8 @@ def create_app():
         href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Roboto:wght@400;700&display=swap"
     )
 
-    # Initialize OAuth clients
-    google_client = None
-    github_client = None
+    # Initialize Auth0 client
     auth0_client = None
-
-    if auth_config.is_oauth_enabled:
-        from fastapp.services.oauth import GoogleAppClient, GitHubAppClient
-        google_client = GoogleAppClient(
-            client_id=auth_config.google_client_id,
-            client_secret=auth_config.google_client_secret
-        )
-        github_client = GitHubAppClient(
-            client_id=auth_config.github_client_id,
-            client_secret=auth_config.github_client_secret
-        )
 
     if auth_config.is_auth0_enabled:
         from fastapp.services.oauth import Auth0AppClient
@@ -151,8 +138,6 @@ def create_app():
 
     # Skip auth for login-related paths
     skip_auth_paths = ['/login', auth_callback_path, '/create-account', '/complete-login', '/complete-account-creation']
-    if auth_config.is_oauth_enabled:
-        skip_auth_paths.extend(['/auth/google', '/auth/github'])
     if auth_config.is_auth0_enabled:
         skip_auth_paths.append('/auth/auth0')
 
@@ -164,8 +149,6 @@ def create_app():
         app.state.db_client = DbClient()
         app.state.config = StickerConfig()
         app.state.auth_config = auth_config
-        app.state.google_client = google_client
-        app.state.github_client = github_client
         app.state.auth0_client = auth0_client
 
         # Setup all routes after state is initialized
@@ -174,49 +157,39 @@ def create_app():
         setup_dashboard_routes(app, app.route)
         setup_admin_routes(app, app.route)
 
-        if auth_config.is_oauth_enabled or auth_config.is_auth0_enabled:
+        if auth_config.is_auth0_enabled:
             @app.get(auth_callback_path)
             def auth_redirect(code: str, state: str, request, session):
                 redir = redir_url(request, auth_callback_path, scheme='http')
                 db_client = request.app.state.db_client
 
-                # Determine which OAuth provider to use based on state
-                if state == 'google':
-                    client = request.app.state.google_client
-                    user_info = client.retr_info(code, redir)
-                    user_id = user_info[client.id_key]
-                    session['user_id'] = user_id
-                elif state == 'github':
-                    client = request.app.state.github_client
-                    user_info = client.retr_info(code, redir)
-                    user_id = user_info[client.id_key]
-                    session['user_id'] = user_id
-                elif state == 'auth0':
-                    client = request.app.state.auth0_client
-                    if not client:
-                        return RedirectResponse('/login?error=auth0_not_configured', status_code=303)
-                    try:
-                        user_info = client.retr_info(code, redir)
-                        auth0_id = user_info.get('sub')
-                        email = user_info.get('email')
-                        name = user_info.get('name') or user_info.get('nickname')
-
-                        if not auth0_id or not email:
-                            print(f"Auth0 missing required info: sub={auth0_id}, email={email}")
-                            return RedirectResponse('/login?error=missing_user_info', status_code=303)
-
-                        # Get or create user in database
-                        user = db_client.get_or_create_auth0_user(auth0_id, email, name)
-                        if not user:
-                            return RedirectResponse('/login?error=user_creation_failed', status_code=303)
-
-                        # Use the database user_id for the session
-                        session['user_id'] = user['user_id']
-                    except Exception as e:
-                        print(f"Auth0 callback error: {e}")
-                        return RedirectResponse('/login?error=auth0_error', status_code=303)
-                else:
+                if state != 'auth0':
                     return RedirectResponse('/login?error=invalid_provider', status_code=303)
+
+                client = request.app.state.auth0_client
+                if not client:
+                    return RedirectResponse('/login?error=auth0_not_configured', status_code=303)
+
+                try:
+                    user_info = client.retr_info(code, redir)
+                    auth0_id = user_info.get('sub')
+                    email = user_info.get('email')
+                    name = user_info.get('name') or user_info.get('nickname')
+
+                    if not auth0_id or not email:
+                        print(f"Auth0 missing required info: sub={auth0_id}, email={email}")
+                        return RedirectResponse('/login?error=missing_user_info', status_code=303)
+
+                    # Get or create user in database
+                    user = db_client.get_or_create_auth0_user(auth0_id, email, name)
+                    if not user:
+                        return RedirectResponse('/login?error=user_creation_failed', status_code=303)
+
+                    # Use the database user_id for the session
+                    session['user_id'] = user['user_id']
+                except Exception as e:
+                    print(f"Auth0 callback error: {e}")
+                    return RedirectResponse('/login?error=auth0_error', status_code=303)
 
                 return RedirectResponse('/', status_code=303)
 
