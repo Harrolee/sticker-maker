@@ -112,6 +112,70 @@ def create_app():
         .storefront-link:hover {
             text-decoration: underline;
         }
+
+        /* Sticker list with thumbnails */
+        .sticker-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px !important;
+        }
+
+        .sticker-thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+            background: var(--secondary-bg);
+        }
+
+        .sticker-thumbnail.placeholder {
+            background: linear-gradient(135deg, #333 25%, #444 50%, #333 75%);
+            background-size: 200% 200%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .sticker-thumbnail.placeholder.error {
+            background: var(--primary);
+            opacity: 0.3;
+            animation: none;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .sticker-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sticker-name {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .sticker-name:hover {
+            color: var(--accent);
+        }
+
+        .sticker-actions {
+            font-size: 0.85em;
+        }
+
+        .action-link {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .action-link:hover {
+            text-decoration: underline;
+        }
     """)
 
     google_fonts = Link(
@@ -137,9 +201,7 @@ def create_app():
         if not auth: return RedirectResponse('/login', status_code=303)
 
     # Skip auth for login-related paths
-    skip_auth_paths = ['/login', auth_callback_path, '/create-account', '/complete-login', '/complete-account-creation']
-    if auth_config.is_auth0_enabled:
-        skip_auth_paths.append('/auth/auth0')
+    skip_auth_paths = ['/login', auth_callback_path, '/auth/auth0']
 
     bware = Beforeware(before, skip=skip_auth_paths)
 
