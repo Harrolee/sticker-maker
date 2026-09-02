@@ -1,3 +1,9 @@
+> **The database is retired.** The Neon Postgres project backing this app was
+> deleted on 2026-09-02 (dormant since January, and it was showing up on the
+> monthly bill). A full verified backup was taken first. See
+> [DATABASE_RESTORE.md](DATABASE_RESTORE.md) before trying to run anything that
+> touches the database.
+
 ### Run the app
 uvicorn fastapp.main:app --host 0.0.0.0 --port 5001
 
